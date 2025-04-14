@@ -1,0 +1,108 @@
+
+1. Création de groupe (Identifiant: 0x01)
+	•	1 octet : Identifiant de l’action (0x01)
+	•	4 octets : ID du créateur
+	•	4 octets : Nombre de membres
+	•	4 x N octets : Liste des IDs des membres
+	•	2 octets : Taille du nom du groupe (en octets)
+	•	X octets : Nom du groupe (UTF-8)
+
+⸻
+
+2. Attribution d’un ID à un utilisateur (Identifiant: 0x02)
+	•	1 octet : Identifiant de l’action (0x02)
+	•	4 octets : ID assigné
+	•	2 octets : Taille du pseudo
+	•	X octets : Pseudo (UTF-8)
+
+⸻
+
+3. Ajout d’un utilisateur à un groupe (Identifiant: 0x03)
+	•	1 octet : Identifiant (0x03)
+	•	4 octets : ID de l’utilisateur à ajouter
+	•	4 octets : ID du groupe
+
+⸻
+
+4. Suppression d’un utilisateur d’un groupe (Identifiant: 0x04)
+	•	1 octet : Identifiant (0x04)
+	•	4 octets : ID de l’utilisateur à supprimer
+	•	4 octets : ID du groupe
+
+⸻
+
+5. Suppression d’un utilisateur (Identifiant: 0x05)
+	•	1 octet : Identifiant (0x05)
+	•	4 octets : ID de l’utilisateur
+
+⸻
+
+6. Envoi d’un message à un utilisateur (Identifiant: 0x06)
+	•	1 octet : Identifiant (0x06)
+	•	4 octets : ID de l’expéditeur
+	•	4 octets : ID du destinataire
+	•	2 octets : Taille du message
+	•	X octets : Message (UTF-8)
+
+⸻
+
+7. Envoi d’un message à un groupe (Identifiant: 0x07)
+	•	1 octet : Identifiant (0x07)
+	•	4 octets : ID de l’expéditeur
+	•	4 octets : ID du groupe
+	•	2 octets : Taille du message
+	•	X octets : Message (UTF-8)
+
+⸻
+
+8. Réception d’un message d’un utilisateur (Identifiant: 0x08)
+	•	1 octet : Identifiant (0x08)
+	•	4 octets : ID de l’expéditeur
+	•	4 octets : ID du destinataire
+	•	2 octets : Taille du message
+	•	X octets : Message (UTF-8)
+
+⸻
+
+9. Réception d’un message sur un groupe (Identifiant: 0x09)
+	•	1 octet : Identifiant (0x09)
+	•	4 octets : ID du groupe
+	•	4 octets : ID de l’expéditeur
+	•	2 octets : Taille du message
+	•	X octets : Message (UTF-8)
+
+⸻
+
+10 à 13 : Codes d’erreur (Identifiants: 0x0A à 0x0D)
+
+Chaque erreur peut suivre cette structure :
+	•	1 octet : Identifiant d’erreur (0x0A, 0x0B, 0x0C, 0x0D)
+	•	1 octet : Code de sous-erreur (optionnel)
+	•	2 octets : Taille du message d’erreur
+	•	X octets : Message descriptif (UTF-8)
+
+⸻
+
+Suggestions de paquets supplémentaires
+
+14. Accusé de réception (Identifiant: 0x0E)
+	•	1 octet : Identifiant (0x0E)
+	•	4 octets : ID du message
+	•	4 octets : ID du destinataire
+
+15. Notification de lecture (Identifiant: 0x0F)
+	•	1 octet : Identifiant (0x0F)
+	•	4 octets : ID du message
+	•	4 octets : ID du lecteur
+
+16. Demande de liste des groupes (Identifiant: 0x10)
+	•	1 octet : Identifiant (0x10)
+	•	4 octets : ID de l’utilisateur
+
+17. Réponse contenant les groupes (Identifiant: 0x11)
+	•	1 octet : Identifiant (0x11)
+	•	4 octets : Nombre de groupes
+	•	Pour chaque groupe :
+	•	4 octets : ID du groupe
+	•	2 octets : Taille du nom
+	•	X octets : Nom du groupe
