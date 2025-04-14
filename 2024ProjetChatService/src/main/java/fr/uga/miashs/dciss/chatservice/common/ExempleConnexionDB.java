@@ -1,49 +1,49 @@
-/*
- * Copyright (c) 2024.  Jerome David. Univ. Grenoble Alpes.
- * This file is part of DcissChatService.
- *
- * DcissChatService is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
- *
- * DcissChatService is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License along with Foobar. If not, see <https://www.gnu.org/licenses/>.
- */
-
 package fr.uga.miashs.dciss.chatservice.common;
 
 import java.sql.*;
 
-
 public class ExempleConnexionDB {
 
-	public static void main(String[] args) {		
-		
-		try {
-			Connection cnx = DriverManager.getConnection("jdbc:derby:target/sample;create=true");//"jdbc:sqlite:sample.db");//
-			
-			cnx.createStatement().executeUpdate("CREATE TABLE MsgUser (id INT PRIMARY KEY, nickname VARCHAR(20))");
+    public static void main(String[] args) {
 
-			PreparedStatement pstmt = cnx.prepareStatement("INSERT INTO MsgUser VALUES (?,?)");
-			
-			pstmt.setInt(1, 35);
-			pstmt.setString(2, "titi");
-			
+        try {
+            // Connexion à la base AppChat.db (fichier placé à la racine du projet)
+            String url = "jdbc:sqlite:AppChat.db";
+            Connection cnx = DriverManager.getConnection(url);
+
+            // Insertion d'un message dans la table Messages
+            String insertSQL = "INSERT INTO Messages (ID, senderID, contenu, group_id, recipient_id) VALUES (?, ?, ?, ?, ?)";
+            PreparedStatement pstmt = cnx.prepareStatement(insertSQL);
+
+            pstmt.setInt(2, 1);  // ID du message
+            pstmt.setInt(2, 101);  // senderID
+            pstmt.setString(3, "Salut à tous, c-est Hanay !");  // contenu
+            pstmt.setInt(4, 1);  // group_id
+            pstmt.setInt(5, 202);  // recipient_id
+            
+            // A faire : voir s-il y a probleme avec l-ID du message
+
 			boolean inserted = pstmt.executeUpdate()==1;
 			
-			
-			ResultSet res = cnx.createStatement().executeQuery("SELECT * FROM MsgUser");
-			
-			while (res.next()) {
-				System.out.println(res.getInt(1)+" - "+res.getString(2));
-			}
-			
-			
-			
-		} catch (SQLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+ 
+            // Lecture des messages
+            String selectSQL = "SELECT * FROM Messages";
+            ResultSet res = cnx.createStatement().executeQuery(selectSQL);
 
-	}
+            System.out.println("Contenu des messages :");
+            while (res.next()) {
+                System.out.println(
+                    "ID: " + res.getInt("ID") +
+                    ", Sender: " + res.getInt("senderID") +
+                    ", Contenu: " + res.getString("contenu") +
+                    ", Group ID: " + res.getInt("group_id") +
+                    ", Recipient ID: " + res.getInt("recipient_id")
+                );
+            }
 
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
 }
