@@ -18,6 +18,7 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import fr.uga.miashs.dciss.chatservice.common.Packet;
+import fr.uga.miashs.dciss.chatservice.client.MessageListener;
 
 /**
  * Manages the connection to a ServerMsg. Method startSession() is used to
@@ -37,6 +38,7 @@ public class ClientMsg {
 	private DataInputStream dis;
 
 	private int identifier;
+	private String pseudo;
 
 	private List<MessageListener> mListeners;
 	private List<ConnectionListener> cListeners;
@@ -183,8 +185,24 @@ public class ClientMsg {
 		s = null;
 		notifyConnectionListeners(false);
 	}
+	
+	protected void sendMessage(int destination, String message) {
+		String lu = null;
+		if (!"\\quit".equals(lu)) {
+			try {
+				int dest = destination;
+
+				lu = message;
+				this.sendPacket(dest, lu.getBytes());
+			} catch (InputMismatchException | NumberFormatException e) {
+				System.out.println("Mauvais format");
+				
+			}
+		}
+	}
 
 	public static void main(String[] args) throws UnknownHostException, IOException, InterruptedException {
+		
 		ClientMsg c = new ClientMsg("localhost", 1667);
 
 		// add a dummy listener that print the content of message as a string
@@ -198,27 +216,27 @@ public class ClientMsg {
 
 		// Thread.sleep(5000);
 
-		// l'utilisateur avec id 4 crée un grp avec 1 et 3 dedans (et lui meme)
-		if (c.getIdentifier() == 4) {
-			ByteArrayOutputStream bos = new ByteArrayOutputStream();
-			DataOutputStream dos = new DataOutputStream(bos);
-
-			// byte 1 : create group on server
-			dos.writeByte(1);
-
-			// nb members
-			dos.writeInt(2);
-			// list members
-			dos.writeInt(1);
-			dos.writeInt(3);
-			dos.flush();
-
-			c.sendPacket(0, bos.toByteArray());
-
-		}
+//		// l'utilisateur avec id 4 crée un grp avec 1 et 3 dedans (et lui meme)
+//		if (c.getIdentifier() == 4) {
+//			ByteArrayOutputStream bos = new ByteArrayOutputStream();
+//			DataOutputStream dos = new DataOutputStream(bos);
+//
+//			// byte 1 : create group on server
+//			dos.writeByte(1);
+//
+//			// nb members
+//			dos.writeInt(2);
+//			// list members
+//			dos.writeInt(1);
+//			dos.writeInt(3);
+//			dos.flush();
+//
+//			c.sendPacket(0, bos.toByteArray());
+//
+//		}
+//		
 		
 		
-
 		Scanner sc = new Scanner(System.in);
 		String lu = null;
 		while (!"\\quit".equals(lu)) {
@@ -231,6 +249,7 @@ public class ClientMsg {
 				c.sendPacket(dest, lu.getBytes());
 			} catch (InputMismatchException | NumberFormatException e) {
 				System.out.println("Mauvais format");
+				
 			}
 
 		}
