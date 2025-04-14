@@ -68,6 +68,13 @@
 			<version>3.45.2.0</version>
 		</dependency>
 		-->
+		
+		<!-- Dépédance ajoutée pour SQLLite-->
+		<dependency>
+			<groupId>org.xerial</groupId>
+			<artifactId>sqlite-jdbc</artifactId>
+			<version>3.36.0.3</version>
+		</dependency
 
 	</dependencies>
 </project>
