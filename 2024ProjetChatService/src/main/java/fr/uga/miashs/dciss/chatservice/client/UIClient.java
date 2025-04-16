@@ -21,6 +21,8 @@ import java.awt.Insets;
 import javax.swing.JButton;
 import javax.swing.JRadioButton;
 import javax.swing.ButtonGroup;
+import javax.swing.DefaultListModel;
+
 import java.awt.event.ActionListener;
 import java.io.IOException;
 import java.net.UnknownHostException;
@@ -32,16 +34,28 @@ import javax.swing.JRadioButtonMenuItem;
 import javax.swing.JPopupMenu;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
+import javax.swing.event.MenuListener;
+import javax.swing.event.MenuEvent;
 
 public class UIClient {
 
 	private JFrame frame;
 	private ClientMsg client;
 	private JTextArea txtAOutbox;
-	private final ButtonGroup buttonGroup = new ButtonGroup();
 	private JTextArea txtAInbox;
 	private JLabel lblInfoMsg;
-	private int[] connectedUsers;
+	private Integer[] connectedUsers;
+	private int selectedUser;
+	private JLabel lblSelectedUser;
+	private JLabel lblInbox;
+	private JMenu mnNewMenu;
+	private DefaultListModel<Integer> model;
+	private int[] myGroups;
+	private int[] myGroupsOwn;
 
 	/**
 	 * Launch the application.
@@ -78,9 +92,33 @@ public class UIClient {
 		this.client.addMessageListener(p -> System.out.println(p.srcId + " says to " + p.destId + ": " + new String(p.data)));
 		this.client.addConnectionListener(active ->  {if (!active) System.exit(0);});
 		this.client.startSession();
+		//get tab connected users;
+		//--------------------------NEEDCHANGES UPDATE ATTRIBUTES---------------------//
+		this.connectedUsers = new Integer[10];
+		for (int i = 0; i < 5; i+=1) {
+			this.connectedUsers[i] = i + 1;
+		}
+		//Add requete list users
 		System.out.println("Vous êtes : " + this.client.getIdentifier());
 
 		initialize();
+	}
+	
+	public void refresh() {
+		//client.getConnectedUsers();
+		//client.getGroups();
+		//client.getGroupsOwn():
+		System.out.println("entrée refresh");
+		model.clear();
+		for (int i = 0; i < connectedUsers.length ; i += 1) {
+			model.addElement(connectedUsers[i]);
+		}
+//		for(int i = 0 ; i< myGroups.length ; i += 1) {
+//			model.addElement(myGroups[i]);
+//		}
+//		for(int i = 0 ; i< myGroupsOwn.length ; i += 1) {
+//			model.addElement(myGroupsOwn[i]);
+//		}
 	}
 
 	/**
@@ -96,31 +134,31 @@ public class UIClient {
 		lbltitle.setHorizontalAlignment(SwingConstants.CENTER);
 		frame.getContentPane().add(lbltitle, BorderLayout.NORTH);
 		
-		JPanel panel_1 = new JPanel();
-		frame.getContentPane().add(panel_1, BorderLayout.EAST);
-		panel_1.setLayout(new GridLayout(0, 1, 0, 0));
+		JPanel panRight = new JPanel();
+		frame.getContentPane().add(panRight, BorderLayout.EAST);
+		panRight.setLayout(new GridLayout(0, 1, 0, 0));
 		
 		JLabel lblUsers = new JLabel("Vos Conversations");
-		panel_1.add(lblUsers);
+		panRight.add(lblUsers);
 		
-		
-		// ------------------------------------------------------------------//
-        
-		
+		        
+		// -------------------  REFRESH ---------------------------//
+
 		JButton btnRefresh = new JButton("Rafraîchir");
 		btnRefresh.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				//client.getConnectedUsers();
+				refresh();
+				
 			}
 		});
-		panel_1.add(btnRefresh);
+		panRight.add(btnRefresh);
 		
 		
-		
-		
-//		// ------------------------------------------------------------------//
+		// -------------------  CREATE GROUP ---------------------------//
+
 		JButton btnCreateGroup = new JButton("Créer un groupe");
-		panel_1.add(btnCreateGroup);
+		panRight.add(btnCreateGroup);
+		
 		
 		btnCreateGroup.addActionListener(new java.awt.event.ActionListener() {
             @Override
@@ -131,7 +169,6 @@ public class UIClient {
                 String member = "";
                 int nbMembers = 0;
                 for (int i = 0; i < members.length(); i += 1) {
-                	
                 	if (members.charAt(i) >= '0' && members.charAt(i) <= '9') {
                 		member += members.charAt(i);
                 	} else {
@@ -163,44 +200,159 @@ public class UIClient {
             }
         });
 		
-		JMenuBar menuBar = new JMenuBar();
-		panel_1.add(menuBar);
 		
-		JMenu mnNewMenu = new JMenu("A  qui écrire ?");
-		menuBar.add(mnNewMenu);
 		
-		JRadioButton rdbtn1 = new JRadioButton("1");
-		mnNewMenu.add(rdbtn1);
-		buttonGroup.add(rdbtn1);
-		rdbtn1.setActionCommand("1");
+		// -------------------  ADD TO GROUP ---------------------------//
+
+		JButton btnAddToGroup = new JButton("Ajouter à un groupe");
+		btnAddToGroup.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				
+				String myGroupsStr = "";
+
+				int[] myGroups2 = {1,2,3,4,5};
+				for (int i = 0; i < myGroups2.length ; i += 1) {
+					myGroupsStr += myGroups2[i] + ", ";
+				}
+				
+				String addGroup = JOptionPane.showInputDialog(frame,
+                        "Vous êtes admin des groupes : " + myGroupsStr + ". Pour ajouter une personne faire 'idGroup:idPersonne'", null);
+				int[] groupAndMember = new int[2];
+				int j = 0;
+				String tmpStr = "";
+				System.out.println(addGroup);
+				for(int i = 0; i < addGroup.length() && j < 2; i += 1 ) {
+					char currChar = addGroup.charAt(i);
+					System.out.println(addGroup.charAt(i));
+					if (currChar >= '0' && currChar <= '9') {
+						tmpStr = tmpStr + addGroup.charAt(i);
+
+					} else if (currChar == '-' && tmpStr.length() == 0 && j ==0) {
+						tmpStr = tmpStr + addGroup.charAt(i);
+					} else {
+						System.out.println("Suivi bug");
+
+						System.out.println(tmpStr);
+						groupAndMember[j] = Integer.parseInt(tmpStr);
+						tmpStr = "";
+						j += 1;
+					}
+				}
+				//client.addToGroup(groupAndMember[0], groupAndMember[1]);
+				
+				System.out.println(addGroup);
+				//client.leaveGroup(int);
+            	lblInfoMsg.setText(groupAndMember[1] + " a bien été ajouté.e au groupe" + groupAndMember[0]);
+            	lblInfoMsg.setForeground(Color.BLUE);
+				refresh();
+			}
+		});
+		panRight.add(btnAddToGroup);
 		
-		JRadioButton rdbtn2 = new JRadioButton("2");
-		mnNewMenu.add(rdbtn2);
-		buttonGroup.add(rdbtn2);
-		rdbtn2.setActionCommand("2");
-		
-		JRadioButton rdbtn3 = new JRadioButton("3");
-		mnNewMenu.add(rdbtn3);
-		buttonGroup.add(rdbtn3);
-		rdbtn3.setActionCommand("3");
-		
-		JRadioButton rdbtn4 = new JRadioButton("4");
-		mnNewMenu.add(rdbtn4);
-		buttonGroup.add(rdbtn4);
-		rdbtn4.setActionCommand("4");
-		
-		JRadioButton rdbtn5 = new JRadioButton("5");
-		mnNewMenu.add(rdbtn5);
-		buttonGroup.add(rdbtn5);
-		rdbtn5.setActionCommand("5");
+		// -------------------  MENU ---------------------------//
 
 		
-		String[] test = {"12" , "34", "56"};
-		JList<String> list = new JList<String>(test);
+		JMenuBar menuBar = new JMenuBar();
+
+
+		panRight.add(menuBar);
+		
+		mnNewMenu = new JMenu("A  qui écrire ?");
+		mnNewMenu.addMenuListener(new MenuListener() {
+			public void menuCanceled(MenuEvent e) {
+			}
+			public void menuDeselected(MenuEvent e) {
+			}
+			public void menuSelected(MenuEvent e) {
+				refresh();
+			}
+		});
+		
+		menuBar.add(mnNewMenu);
+
+		
+		// -------------------  JLIST ---------------------------//
+
+		
+	
+	    model = new DefaultListModel<Integer>();
+	    for (Integer s : connectedUsers) {
+	      model.addElement(s);
+	    }
+		JList<Integer> list = new JList<>(model);
+		list.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseClicked(MouseEvent e) {
+				selectedUser = list.getSelectedValue();
+				System.out.println(selectedUser);
+				lblSelectedUser.setText("Vous écrivez à "+selectedUser);
+				lblInbox.setText("Conversation avec " + selectedUser);
+				
+				txtAInbox.setText("Debut de la conversation avec " + selectedUser);
+				//String[] conversation = client.getConversation(int);
+				String[] conversation = new String[50];
+				for(int i = 0; i < conversation.length; i += 1) {
+					txtAInbox.setText(txtAInbox.getText() + i + "\n");
+				}
+				refresh();
+			}
+		});
 		mnNewMenu.add(list);
 		
-		JLabel lblNewLabel = new JLabel("Vous écrivez à 1");
-		panel_1.add(lblNewLabel);
+		lblSelectedUser = new JLabel("Vous écrivez à ");
+		panRight.add(lblSelectedUser);
+		
+		
+		
+		// -------------------  LEAVE GROUP ---------------------------//
+
+		JButton btnLeaveGroup = new JButton("Quitter un groupe");
+		btnLeaveGroup.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				String myGroupsStr = "";
+				int[] myGroups2 = {1,2,3,4,5};
+				for (int i = 0; i < myGroups2.length ; i += 1) {
+					myGroupsStr += myGroups2[i] + ", ";
+				}
+				
+				String leaveGroup = JOptionPane.showInputDialog(frame,
+                        "Vous appartenez aux groupes : " + myGroupsStr + ". Quel groupe voulez-vous quitter ?", null);
+				int groupToLeave = Integer.parseInt(leaveGroup);
+				System.out.println(leaveGroup);
+				//client.leaveGroup(int);
+            	lblInfoMsg.setText("Vous avez bien quitté le groupe" + leaveGroup);
+            	lblInfoMsg.setForeground(Color.BLUE);
+				refresh();
+				//////END////
+			}
+		});
+		panRight.add(btnLeaveGroup);
+		
+		
+		// -------------------  Delete GROUP ---------------------------//
+
+		JButton btnDeleteGroup = new JButton("Supprimer un groupe");
+		btnDeleteGroup.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				String myGroupsOwnStr = "";
+				int[] myGroups2 = {1,2,3,4,5};
+				for (int i = 0; i < myGroups2.length ; i += 1) {
+					myGroupsOwnStr += myGroups2[i] + ", ";
+				}
+				
+				String deleteGroup = JOptionPane.showInputDialog(frame,
+                        "Vous administrez les groupes : " + myGroupsOwnStr + ". Quel groupe voulez-vous supprimer ?", null);
+				System.out.println(deleteGroup);
+				int groupToDelete = Integer.parseInt(deleteGroup);
+				
+            	lblInfoMsg.setText("Le groupe " + deleteGroup + " a bien été supprimé");
+            	lblInfoMsg.setForeground(Color.BLUE);
+				//client.deleteGroup(int);
+				
+				refresh();
+			}
+		});
+		panRight.add(btnDeleteGroup);
 		
 
 		
@@ -221,11 +373,15 @@ public class UIClient {
 		panInbox.setLayout(new BorderLayout(0, 0));
 		
 				
-				JLabel lblInbox = new JLabel("Conversation");
+				lblInbox = new JLabel("Conversation avec  ?");
 				panInbox.add(lblInbox, BorderLayout.NORTH);
 				
 				txtAInbox = new JTextArea();
-				panInbox.add(txtAInbox);
+				JScrollPane scrolltxtAInbox = new JScrollPane(txtAInbox);
+				scrolltxtAInbox.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
+
+
+				panInbox.add(scrolltxtAInbox);
 				txtAInbox.setRows(1);
 				
 				JTextArea textArea = new JTextArea();
@@ -238,11 +394,14 @@ public class UIClient {
 				txtAOutbox = new JTextArea();
 				panOutbox.add(txtAOutbox);
 				
+				
+				//------------------SEND MSG ------------------- //
 				JButton btnSend = new JButton("Envoyer");
 				btnSend.addActionListener(new ActionListener() {
 					public void actionPerformed(ActionEvent e) {
 						
-						int dest = Integer.parseInt(buttonGroup.getSelection().getActionCommand());
+						int dest = selectedUser;
+						System.out.println("user : " +selectedUser);
 						String message = txtAOutbox.getText();
 						System.out.println("Dest : " + dest + ", Msg : " + message);
 						
@@ -254,6 +413,8 @@ public class UIClient {
 						txtAInbox.setText(txtAInbox.getText() + "\n" + "Vous  : " + message );
 						
 						txtAOutbox.setText("");
+						
+						refresh();
 						//END OF ACTION//
 					}
 				});
