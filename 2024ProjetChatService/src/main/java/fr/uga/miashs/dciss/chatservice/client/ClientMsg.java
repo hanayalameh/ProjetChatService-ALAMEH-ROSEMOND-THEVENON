@@ -21,6 +21,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 
 import fr.uga.miashs.dciss.chatservice.common.Packet;
+import fr.uga.miashs.dciss.chatservice.client.MessageListener;
 
 /**
  * Manages the connection to a ServerMsg. Method startSession() is used to
@@ -43,6 +44,7 @@ public class ClientMsg {
 	private String username;
 
 	private int identifier;
+	private String pseudo;
 
 	private List<MessageListener> mListeners;
 	private List<ConnectionListener> cListeners;
@@ -308,6 +310,21 @@ public class ClientMsg {
 		notifyConnectionListeners(false);
 	}
 	
+	protected void sendMessage(int destination, String message) {
+		String lu = null;
+		if (!"\\quit".equals(lu)) {
+			try {
+				int dest = destination;
+
+				lu = message;
+				this.sendPacket(dest, lu.getBytes());
+			} catch (InputMismatchException | NumberFormatException e) {
+				System.out.println("Mauvais format");
+				
+			}
+		}
+	}
+	
 	// Méthode ajoutée pour afficher l'historique basée sur getMessagesArrayBetween
 	public void afficherHistoriqueTableau(int autreId) {
 	    try {
@@ -325,6 +342,7 @@ public class ClientMsg {
 
 	
 	public static void main(String[] args) throws UnknownHostException, IOException, InterruptedException, SQLException {
+		
 		ClientMsg c = new ClientMsg("localhost", 1667);
 
 		// add a dummy listener that print the content of message as a string
@@ -414,6 +432,7 @@ public class ClientMsg {
 				c.sendPacket(dest, lu.getBytes());
 			} catch (InputMismatchException | NumberFormatException e) {
 				System.out.println("Mauvais format");
+				
 			}
 			
 			// TEST affichage de l'historique avec l'utilisateur d'ID 3

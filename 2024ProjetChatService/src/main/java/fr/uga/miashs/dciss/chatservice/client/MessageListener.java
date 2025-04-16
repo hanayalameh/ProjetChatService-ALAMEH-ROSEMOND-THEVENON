@@ -16,5 +16,5 @@ import fr.uga.miashs.dciss.chatservice.common.Packet;
 public interface MessageListener {
 
 	void messageReceived(Packet p);
-
+	//Stocker le message reçu avec horodatage ?
 }

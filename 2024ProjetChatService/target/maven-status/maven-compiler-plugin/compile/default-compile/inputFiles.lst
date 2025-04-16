@@ -1,3 +1,15 @@
+/home/pillow/ProjetChatService-ALAMEH-ROSEMOND-THEVENON/2024ProjetChatService/src/main/java/fr/uga/miashs/dciss/chatservice/client/UIClient.java
+/home/pillow/ProjetChatService-ALAMEH-ROSEMOND-THEVENON/2024ProjetChatService/src/main/java/fr/uga/miashs/dciss/chatservice/common/ExempleConnexionDB.java
+/home/pillow/ProjetChatService-ALAMEH-ROSEMOND-THEVENON/2024ProjetChatService/src/main/java/fr/uga/miashs/dciss/chatservice/server/ServerException.java
+/home/pillow/ProjetChatService-ALAMEH-ROSEMOND-THEVENON/2024ProjetChatService/src/main/java/fr/uga/miashs/dciss/chatservice/server/PacketProcessor.java
+/home/pillow/ProjetChatService-ALAMEH-ROSEMOND-THEVENON/2024ProjetChatService/src/main/java/fr/uga/miashs/dciss/chatservice/server/ServerMsg.java
+/home/pillow/ProjetChatService-ALAMEH-ROSEMOND-THEVENON/2024ProjetChatService/src/main/java/fr/uga/miashs/dciss/chatservice/server/GroupMsg.java
+/home/pillow/ProjetChatService-ALAMEH-ROSEMOND-THEVENON/2024ProjetChatService/src/main/java/fr/uga/miashs/dciss/chatservice/client/ConnectionListener.java
+/home/pillow/ProjetChatService-ALAMEH-ROSEMOND-THEVENON/2024ProjetChatService/src/main/java/fr/uga/miashs/dciss/chatservice/client/MessageListener.java
+/home/pillow/ProjetChatService-ALAMEH-ROSEMOND-THEVENON/2024ProjetChatService/src/main/java/fr/uga/miashs/dciss/chatservice/server/ServerPacketProcessor.java
+/home/pillow/ProjetChatService-ALAMEH-ROSEMOND-THEVENON/2024ProjetChatService/src/main/java/fr/uga/miashs/dciss/chatservice/server/UserMsg.java
+/home/pillow/ProjetChatService-ALAMEH-ROSEMOND-THEVENON/2024ProjetChatService/src/main/java/fr/uga/miashs/dciss/chatservice/common/Packet.java
+/home/pillow/ProjetChatService-ALAMEH-ROSEMOND-THEVENON/2024ProjetChatService/src/main/java/fr/uga/miashs/dciss/chatservice/client/ClientMsg.java
 C:\Users\hanay\ProjetChatService-ALAMEH-ROSEMOND-THEVENON\2024ProjetChatService\src\main\java\fr\uga\miashs\dciss\chatservice\client\ClientMsg.java
 C:\Users\hanay\ProjetChatService-ALAMEH-ROSEMOND-THEVENON\2024ProjetChatService\src\main\java\fr\uga\miashs\dciss\chatservice\client\ConnectionListener.java
 C:\Users\hanay\ProjetChatService-ALAMEH-ROSEMOND-THEVENON\2024ProjetChatService\src\main\java\fr\uga\miashs\dciss\chatservice\client\MessageListener.java
