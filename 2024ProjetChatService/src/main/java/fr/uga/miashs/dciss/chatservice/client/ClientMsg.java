@@ -199,6 +199,21 @@ public class ClientMsg {
 		}
 		return bos.toByteArray();
 	}
+	
+	public byte[] listGroupeNonOwner(int resquester) {
+		ByteArrayOutputStream bos = new ByteArrayOutputStream();
+		DataOutputStream dos = new DataOutputStream(bos);
+		try {
+			dos.writeByte(30);
+			dos.writeInt(resquester);
+			dos.flush();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		return bos.toByteArray();
+	}
 	public byte[] createGroupData(int OwnerId, int[] members) {
 		
 		ByteArrayOutputStream bos = new ByteArrayOutputStream();
@@ -263,7 +278,7 @@ public class ClientMsg {
 		// add a dummy listener that print the content of message as a string
 		c.addMessageListener(p -> {
 			byte type = p.data[0];
-			if (type==21) {
+			if (type==21 || type==31) {
 				ByteBuffer buf =ByteBuffer.wrap(p.data);
 				buf.get();
 				int taille = buf.getInt();
@@ -271,6 +286,7 @@ public class ClientMsg {
 					System.out.print(" -ID: "+ buf.getInt());
 				}
 			} else
+			
 				System.out.println(p.srcId + " says to " + p.destId + ": " + new String(p.data));
 		});
 		
