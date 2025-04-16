@@ -49,8 +49,10 @@ public class ServerMsg {
 		nextUserId = new AtomicInteger(1);
 		nextGroupId = new AtomicInteger(-1);
 		sp = new ServerPacketProcessor(this);
-		executor = Executors.newCachedThreadPool();
-		}
+		executor = Executors.newWorkStealingPool();
+	}
+	
+	
 	
 	public GroupMsg createGroup(int ownerId) {
 		UserMsg owner = users.get(ownerId);
@@ -61,6 +63,8 @@ public class ServerMsg {
 		LOG.info("Group "+res.getId()+" created");
 		return res;
 	}
+	
+	
 	
 	public boolean removeGroup(int groupId) {
 		GroupMsg g =groups.remove(groupId);
@@ -79,6 +83,16 @@ public class ServerMsg {
 	public UserMsg getUser(int userId) {
 		return users.get(userId);
 	}
+	public Map<Integer, UserMsg> getUsers() {
+		return users;
+	}
+	public GroupMsg getGroup(int GroupID) {
+		return groups.get(GroupID);
+	}
+	
+	public Map<Integer, GroupMsg> getGroups(){
+		return groups;
+	}
 	
 	// Methode utilisée pour savoir quoi faire d'un paquet
 	// reçu par le serveur
@@ -92,6 +106,7 @@ public class ServerMsg {
 		}
 		else if (p.destId > 0) { // message entre utilisateurs
 			 pp = users.get(p.destId);
+			 
 		}
 		else { // message de gestion pour le serveur
 			pp=sp;
@@ -128,7 +143,7 @@ public class ServerMsg {
 				// une pour envoyer des messages au client
 				// les deux boucles sont gérées au niveau de la classe UserMsg
 				UserMsg x = users.get(userId);
-				if (x!= null && x.open(s)) {
+				if (x.open(s)) {
 					LOG.info(userId + " connected");
 					// lancement boucle de reception
 					executor.submit(() -> x.receiveLoop());
@@ -157,7 +172,7 @@ public class ServerMsg {
 	}
 
 	public static void main(String[] args) throws IOException {
-		ServerMsg s = new ServerMsg(1667);
+		ServerMsg s = new ServerMsg(1666);
 		s.start();
 	}
 

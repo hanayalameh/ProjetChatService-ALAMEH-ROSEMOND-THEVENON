@@ -51,6 +51,11 @@ public class GroupMsg implements PacketProcessor {
 	 * @param s
 	 * @return
 	 */
+	public UserMsg getOwner() {
+		return owner;
+	}
+	
+	
 	public boolean removeMember(UserMsg s) {
 		if (s.equals(owner)) return false;
 		if (members.remove(s)) {

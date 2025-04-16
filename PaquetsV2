@@ -1,0 +1,96 @@
+
+1. Création de groupe (Identifiant: 1)
+	•	1 octet : Identifiant de l’action (1)
+	•	4 octets : ID du créateur
+	•	4 octets : Nombre de membres
+	•	4 x N octets : Liste des IDs des membres
+	•	2 octets : Taille du nom du groupe (en octets) // on doit se mettre d’accord sur ce nombre
+	•	X octets : Nom du groupe (UTF-8)
+
+
+2. Attribution d’un ID a un utilisateur (Identifiant: 2)
+	•	1 octet : Identifiant de l’action (2)
+	•	4 octets : ID assigne
+	•	2 octets : Taille du pseudo // on doit se mettre d’accord sur ce nombre
+	•	X octets : Pseudo (UTF-8)
+
+
+3. Ajout d’un utilisateur a un groupe (Identifiant: 3)
+	•	1 octet : Identifiant (3)
+	•	4 octets : ID de l’utilisateur à ajouter
+	•	4 octets : ID du groupe
+
+
+
+4. Suppression d’un utilisateur d’un groupe (Identifiant: 4)
+	•	1 octet : Identifiant (4)
+	•	4 octets : ID de l’utilisateur à supprimer
+	•	4 octets : ID du groupe
+
+
+5. Suppression d’un utilisateur (Identifiant: 5)
+	•	1 octet : Identifiant (5)
+	•	4 octets : ID de l’utilisateur
+
+
+6. Envoi d’un message a un utilisateur (Identifiant: 6)
+	•	1 octet : Identifiant (6)
+	•	4 octets : ID de l’expéditeur
+	•	4 octets : ID du destinataire
+	•	2 octets : Taille du message // on doit se mettre d’accord sur ce nombre
+	•	X octets : Message (UTF-8)
+
+
+7. Envoi d’un message a un groupe (Identifiant: 7)
+	•	1 octet : Identifiant (7)
+	•	4 octets : ID de l’expéditeur
+	•	4 octets : ID du groupe
+	•	2 octets : Taille du message // on doit se mettre d’accord sur ce nombre
+	•	X octets : Message (UTF-8)
+
+
+
+8. Réception d’un message d’un utilisateur (Identifiant: 8)
+	•	1 octet : Identifiant (8)
+	•	4 octets : ID de l’expéditeur
+	•	4 octets : ID du destinataire
+	•	2 octets : Taille du message
+	•	X octets : Message (UTF-8)
+
+9. Réception d’un message sur un groupe (Identifiant: 9)
+	•	1 octet : Identifiant (9)
+	•	4 octets : ID du groupe
+	•	4 octets : ID de l’expéditeur
+	•	2 octets : Taille du message
+	•	X octets : Message (UTF-8)
+
+
+10 à 13 : Codes d’erreur (Identifiants: 10 -13)
+
+Chaque erreur suit cette structure :
+	•	1 octet : Identifiant d’erreur (10, 11, 12, 13)
+	•	2 octets : Taille du message d’erreur
+	•	X octets : Message descriptif (UTF-8)
+
+
+14. Accusé de réception (Identifiant: 14)
+	•	1 octet : Identifiant (14)
+	•	4 octets : ID du message
+	•	4 octets : ID du destinataire // si on veut changer l etat dans la reception d un message
+
+15. Notification de lecture (Identifiant: 15)
+	•	1 octet : Identifiant (15)
+	•	4 octets : ID du message
+	•	4 octets : ID du lecteur // de meme que le 15 mais on implementera si on a le temps
+
+16. Demande de liste des groupes (Identifiant: 16)
+	•	1 octet : Identifiant (16)
+	•	4 octets : ID de l’utilisateur
+
+17. Réponse contenant les groupes (Identifiant: 17)
+	•	1 octet : Identifiant (17)
+	•	4 octets : Nombre de groupes
+	•	Pour chaque groupe :
+	•	4 octets : ID du groupe
+	•	2 octets : Taille du nom
+	•	X octets : Nom du groupe
