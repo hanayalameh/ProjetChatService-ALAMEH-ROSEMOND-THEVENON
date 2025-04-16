@@ -11,169 +11,157 @@
 
 package fr.uga.miashs.dciss.chatservice.server;
 
-import java.io.*;
-import java.net.*;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Collection;
+import java.util.Set;
 import java.util.logging.Logger;
 
 import fr.uga.miashs.dciss.chatservice.common.Packet;
 
-import java.util.*;
+public class ServerPacketProcessor implements PacketProcessor {
+	private final static Logger LOG = Logger.getLogger(ServerPacketProcessor.class.getName());
+	private ServerMsg server;
 
-public class ServerMsg {
-	
-	private final static Logger LOG = Logger.getLogger(ServerMsg.class.getName());
-	public final static int SERVER_CLIENTID = 0;
+	public ServerPacketProcessor(ServerMsg s) {
+		this.server = s;
+	}
 
-	private transient ServerSocket serverSock;
-	private transient boolean started;
-	private transient ExecutorService executor;
-	private transient ServerPacketProcessor sp;
-	
-	// maps pour associer les id aux users et groupes
-	private Map<Integer, UserMsg> users;
-	private Map<Integer, GroupMsg> groups;
-	
-	
-	
-	// séquences pour générer les identifiant d'utilisateurs et de groupe
-	private AtomicInteger nextUserId;
-	private AtomicInteger nextGroupId;
-
-	public ServerMsg(int port) throws IOException {
-		serverSock = new ServerSocket(port);
-		started = false;
-		users = new ConcurrentHashMap<>();
-		groups = new ConcurrentHashMap<>(); 
-		nextUserId = new AtomicInteger(1);
-		nextGroupId = new AtomicInteger(-1);
-		sp = new ServerPacketProcessor(this);
-		executor = Executors.newWorkStealingPool();
-	}
-	
-	
-	
-	public GroupMsg createGroup(int ownerId) {
-		UserMsg owner = users.get(ownerId);
-		if (owner==null) throw new ServerException("User with id="+ownerId+" unknown. Group creation failed.");
-		int id = nextGroupId.getAndDecrement();
-		GroupMsg res = new GroupMsg(id,owner);
-		groups.put(id, res);
-		LOG.info("Group "+res.getId()+" created");
-		return res;
-	}
-	
-	
-	
-	public boolean removeGroup(int groupId) {
-		GroupMsg g =groups.remove(groupId);
-		if (g==null) return false;
-		g.beforeDelete();
-		return true;
-	}
-	
-	public boolean removeUser(int userId) {
-		UserMsg u =users.remove(userId);
-		if (u==null) return false;
-		u.beforeDelete();
-		return true;
-	}
-	
-	public UserMsg getUser(int userId) {
-		return users.get(userId);
-	}
-	public Map<Integer, UserMsg> getUsers() {
-		return users;
-	}
-	public GroupMsg getGroup(int GroupID) {
-		return groups.get(GroupID);
-	}
-	
-	public Map<Integer, GroupMsg> getGroups(){
-		return groups;
-	}
-	
-	// Methode utilisée pour savoir quoi faire d'un paquet
-	// reçu par le serveur
-	public void processPacket(Packet p) {
-		PacketProcessor pp = null;
-		if (p.destId < 0) { //message de groupe
-			// can be send only if sender is member
-			UserMsg sender = users.get(p.srcId);
-			GroupMsg g = groups.get(p.destId);
-			if (g.getMembers().contains(sender)) pp=g;
-		}
-		else if (p.destId > 0) { // message entre utilisateurs
-			 pp = users.get(p.destId);
-			 
-		}
-		else { // message de gestion pour le serveur
-			pp=sp;
-		}
+	@Override
+	public void process(Packet p) {
+		// ByteBufferVersion. On aurait pu utiliser un ByteArrayInputStream + DataInputStream à la place
+		ByteBuffer buf = ByteBuffer.wrap(p.data);
+		byte type = buf.get();
 		
-		if (pp != null) {
-			pp.process(p);
+//		if (type == 1) { // cas creation de groupe
+//			createGroup(p.srcId,buf);
+//		} else {
+//			LOG.warning("Server message of type=" + type + " not handled by procesor");
+//		}
+		
+		switch (type) {
+		case 1:
+			createGroup(p.srcId,buf);
+			break;
+		case 3:
+			int clientRequete = p.srcId;
+			int idUser = buf.getInt();
+			int idGroupe = buf.getInt();
+			ajoutMembreGroupe(clientRequete,idUser, idGroupe);
+			break;
+		case 4:
+			clientRequete = p.srcId;
+			int idU = buf.getInt();
+			int idG =  buf.getInt();
+			deleteMembreGroupe(clientRequete,idU,idG);
+			break;
+		case 20:
+			int requester = buf.getInt();
+			requestConnectedUsers(requester);
+			break;
+		case 30:
+			requester = buf.getInt();
+			ListGroupNonOwner(requester);
+			break;
+		default:
+			erreurs(type);
 		}
 	}
-
-	public void start() {
-		started = true;
-		while (started) {
-			try {
-				// le serveur attend une connexion d'un client
-				Socket s = serverSock.accept();
-
-				DataInputStream dis = new DataInputStream(s.getInputStream());
-				DataOutputStream dos = new DataOutputStream(s.getOutputStream());
-
-				// lit l'identifiant du client
-				int userId = dis.readInt();
-				//si 0 alors il faut créer un nouvel utilisateur et
-				// envoyer l'identifiant au client
-				if (userId == 0) {
-					userId = nextUserId.getAndIncrement();
-					dos.writeInt(userId);
-					dos.flush();
-					users.put(userId, new UserMsg(userId, this));
-				}
-				// si l'identifiant existe ou est nouveau alors 
-				// deux "taches"/boucles  sont lancées en parralèle
-				// une pour recevoir les messages du client, 
-				// une pour envoyer des messages au client
-				// les deux boucles sont gérées au niveau de la classe UserMsg
-				UserMsg x = users.get(userId);
-				if (x.open(s)) {
-					LOG.info(userId + " connected");
-					// lancement boucle de reception
-					executor.submit(() -> x.receiveLoop());
-					// lancement boucle d'envoi
-					executor.submit(() -> x.sendLoop());
-				} else { // si l'idenfiant est inconnu, on ferme la connexion
-					s.close();
-				}
-
-			} catch (IOException e) {
-				LOG.info("Close server");
-				e.printStackTrace();
-			}
+	
+	public void createGroup(int ownerId, ByteBuffer data) {
+		int nb = data.getInt();
+		GroupMsg g = server.createGroup(ownerId);
+		for (int i = 0; i < nb; i++) {
+			g.addMember(server.getUser(data.getInt()));
 		}
 	}
-
-	public void stop() {
-		started = false;
+	
+	public void ajoutMembreGroupe(int ownerId,int idUser,int idGroupe) {
+		// peux-etre que l on doit faire boolean, ce sera plus facile
+		GroupMsg g = server.getGroup(idGroupe);
+		if (ownerId!= g.getOwner().getId())
+			{LOG.info("Permission Denied ");
+			return;}
+		System.out.println("ICI 2");
+		g.addMember(server.getUser(idUser));
+		LOG.info("User "+ idUser+ "a ete ajoute au groupe" + g.getId());
+		
+	}
+	
+	public void deleteMembreGroupe(int ownerId,int idUser,int idGroupe) {
+		// peux-etre que l on doit faire boolean, ce sera plus facile
+		GroupMsg g = server.getGroup(idGroupe);
+		if (ownerId == g.getOwner().getId())
+			{LOG.info("Vous ne pouvez pas quitter un groupe que vous avez cree ");
+			return;}
+		g.removeMember(server.getUser(idUser));
+		LOG.info("User "+ idUser+ "a ete retire au groupe" + g.getId());
+		
+	}
+	public void requestConnectedUsers(int requestID) {
+		Collection <UserMsg> clients = server.getUsers().values();
+		ByteArrayOutputStream bos = new ByteArrayOutputStream();
+		DataOutputStream dos = new DataOutputStream(bos);
+		System.out.print("ici");
 		try {
-			serverSock.close();
-			users.values().forEach(s -> s.close());
+			dos.writeByte(21);
+			dos.writeInt(clients.size());
+			for (UserMsg u:clients) {
+				if (u.isConnected())
+					dos.writeInt(u.getId());
+			}
+			UserMsg requester = server.getUser(requestID);
+			requester.process(new Packet(requestID, requestID, bos.toByteArray()));
+			
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
-
-	public static void main(String[] args) throws IOException {
-		ServerMsg s = new ServerMsg(1666);
-		s.start();
+	public void ListGroupNonOwner(int requester) {
+		Collection <GroupMsg> groupes = server.getGroups().values();
+		ByteArrayOutputStream bos = new ByteArrayOutputStream();
+		DataOutputStream dos = new DataOutputStream(bos);
+		UserMsg client = server.getUser(requester);
+		try {
+			dos.writeByte(31);
+			dos.writeInt(groupes.size());
+			
+			for(GroupMsg g: groupes) {
+				Set<UserMsg> members = g.getMembers();
+				if (members.contains(client) && g.getOwner().getId()!=requester)
+					dos.writeInt(g.getId());
+			}
+			
+			client.process(new Packet(requester, requester, bos.toByteArray()));
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
+	public String erreurs(byte t) {
+		String s = null;
+		if (t==10) {
+			s = "Erreur lors de la creation de l utilisateur";
+		}
+		switch(t) {
+		case 10: 
+			s = "Erreur lors de la creation de l utilisateur";
+			break;
+		case 11:
+			s = "Erreur lors d'ajout du client dans un groupe";
+			break;
+		case 12:
+			s = "Erreur lors de la suppresion d 1 utilisateur a un groupe";
+			break;
+			
+		}
+		
+		return s;
+	}
+	
+	
 
 }
