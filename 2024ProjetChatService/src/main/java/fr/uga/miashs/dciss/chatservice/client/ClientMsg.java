@@ -14,8 +14,10 @@ package fr.uga.miashs.dciss.chatservice.client;
 import java.io.*;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+
 
 import fr.uga.miashs.dciss.chatservice.common.Packet;
 
@@ -35,6 +37,9 @@ public class ClientMsg {
 	private Socket s;
 	private DataOutputStream dos;
 	private DataInputStream dis;
+	
+	private ClientDB clientDB;
+	private String username;
 
 	private int identifier;
 
@@ -48,8 +53,9 @@ public class ClientMsg {
 	 * @param id      The client id
 	 * @param address The server address or hostname
 	 * @param port    The port number
+	 * @throws SQLException 
 	 */
-	public ClientMsg(int id, String address, int port) {
+	public ClientMsg(int id, String address, int port) throws SQLException {
 		if (id < 0)
 			throw new IllegalArgumentException("id must not be less than 0");
 		if (port <= 0)
@@ -59,6 +65,8 @@ public class ClientMsg {
 		identifier = id;
 		mListeners = new ArrayList<>();
 		cListeners = new ArrayList<>();
+		
+
 	}
 
 	/**
@@ -67,8 +75,9 @@ public class ClientMsg {
 	 * 
 	 * @param address The server address or hostname
 	 * @param port    The port number
+	 * @throws SQLException 
 	 */
-	public ClientMsg(String address, int port) {
+	public ClientMsg(String address, int port) throws SQLException {
 		this(0, address, port);
 	}
 
@@ -108,9 +117,10 @@ public class ClientMsg {
 	 * Method to be called to establish the connection.
 	 * 
 	 * @throws UnknownHostException
+	 * @throws SQLException 
 	 * @throws IOException
 	 */
-	public void startSession() throws UnknownHostException {
+	public void startSession() throws UnknownHostException, SQLException {
 		if (s == null || s.isClosed()) {
 			try {
 				s = new Socket(serverAddress, serverPort);
@@ -121,8 +131,23 @@ public class ClientMsg {
 				if (identifier == 0) {
 					identifier = dis.readInt();
 				}
+				 Scanner sc = new Scanner(System.in);
+		            System.out.print("Entrez votre pseudo : ");
+		            String pseudo = sc.nextLine();
+		            this.username = pseudo;
+
+		            // Crée la base avec pseudo et ID. 
+		            this.clientDB = new ClientDB(pseudo);
+
 				// start the receive loop
-				new Thread(() -> receiveLoop()).start();
+				new Thread(() -> {
+					try {
+						receiveLoop();
+					} catch (SQLException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+				}).start();
 				notifyConnectionListeners(true);
 			} catch (IOException e) {
 				e.printStackTrace();
@@ -137,8 +162,9 @@ public class ClientMsg {
 	 * 
 	 * @param destId the destinatiion id
 	 * @param data   the data to be sent
+	 * @throws SQLException 
 	 */
-	public void sendPacket(int destId, byte[] data) {
+	public void sendPacket(int destId, byte[] data) throws SQLException {
 		try {
 			synchronized (dos) {
 				dos.writeInt(destId);
@@ -146,6 +172,11 @@ public class ClientMsg {
 				dos.write(data);
 				dos.flush();
 			}
+			
+		// Enregistrement du message envoyé ?????????????
+	        clientDB.insertionMessage(identifier, new String(data), 0, destId);
+	        
+	        
 		} catch (IOException e) {
 			// error, connection closed
 			closeSession();
@@ -155,8 +186,9 @@ public class ClientMsg {
 
 	/**
 	 * Start the receive loop. Has to be called only once.
+	 * @throws SQLException 
 	 */
-	private void receiveLoop() {
+	private void receiveLoop() throws SQLException {
 		try {
 			while (s != null && !s.isClosed()) {
 
@@ -165,6 +197,9 @@ public class ClientMsg {
 				int length = dis.readInt();
 				byte[] data = new byte[length];
 				dis.readFully(data);
+				
+				clientDB.insertionMessage(sender, new String(data), 0, dest);
+
 				notifyMessageListeners(new Packet(sender, dest, data));
 
 			}
@@ -173,6 +208,9 @@ public class ClientMsg {
 		}
 		closeSession();
 	}
+	
+
+
 
 	public void closeSession() {
 		try {
@@ -183,8 +221,24 @@ public class ClientMsg {
 		s = null;
 		notifyConnectionListeners(false);
 	}
+	
+	// Méthode ajoutée pour afficher l'historique basée sur getMessagesArrayBetween
+	public void afficherHistoriqueTableau(int autreId) {
+	    try {
+	        // Appel de la méthode pour récupérer le tableau de messages entre l'utilisateur courant et autreId
+	        String[] historique = clientDB.getMessagesArrayBetween(this.identifier, autreId);
+	        System.out.println("Historique des messages avec l'utilisateur " + autreId + " :");
+	        for (String msg : historique) {
+	            System.out.println(msg);
+	        }
+	    } catch (SQLException e) {
+	        System.out.println("Erreur lors de la récupération de l'historique : ");
+	        e.printStackTrace();
+	    }
+	}
 
-	public static void main(String[] args) throws UnknownHostException, IOException, InterruptedException {
+	
+	public static void main(String[] args) throws UnknownHostException, IOException, InterruptedException, SQLException {
 		ClientMsg c = new ClientMsg("localhost", 1667);
 
 		// add a dummy listener that print the content of message as a string
@@ -194,6 +248,7 @@ public class ClientMsg {
 		c.addConnectionListener(active ->  {if (!active) System.exit(0);});
 
 		c.startSession();
+		
 		System.out.println("Vous êtes : " + c.getIdentifier());
 
 		// Thread.sleep(5000);
@@ -232,6 +287,11 @@ public class ClientMsg {
 			} catch (InputMismatchException | NumberFormatException e) {
 				System.out.println("Mauvais format");
 			}
+			
+			// TEST affichage de l'historique avec l'utilisateur d'ID 3
+			System.out.println("\n== Affichage de l'historique en tableau ==");
+			c.afficherHistoriqueTableau(3);
+
 
 		}
 
