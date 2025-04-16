@@ -7,26 +7,43 @@ public class ExempleConnexionDB {
     public static void main(String[] args) {
 
         try {
-            // Connexion à la base AppChat.db (fichier placé à la racine du projet)
+            // Connexion à la base AppChat.db (fichier à la racine du projet)
             String url = "jdbc:sqlite:AppChat.db";
             Connection cnx = DriverManager.getConnection(url);
-
-            // Insertion d'un message dans la table Messages
-            String insertSQL = "INSERT INTO Messages (ID, senderID, contenu, group_id, recipient_id) VALUES (?, ?, ?, ?, ?)";
-            PreparedStatement pstmt = cnx.prepareStatement(insertSQL);
-
-            pstmt.setInt(2, 1);  // ID du message
-            pstmt.setInt(2, 101);  // senderID
-            pstmt.setString(3, "Salut à tous, c-est Hanay !");  // contenu
-            pstmt.setInt(4, 1);  // group_id
-            pstmt.setInt(5, 202);  // recipient_id
             
-            // A faire : voir s-il y a probleme avec l-ID du message
+            String createUsersTable = """
+                    CREATE TABLE IF NOT EXISTS Users (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        pseudo TEXT UNIQUE NOT NULL,
+                        password TEXT NOT NULL
+                    );
+                """;
+            cnx.createStatement().executeUpdate(createUsersTable);
 
-			boolean inserted = pstmt.executeUpdate()==1;
-			
+            // Création (si nécessaire) de la table Messages pour cet exemple
+            String createMessagesTable = """
+                    CREATE TABLE IF NOT EXISTS Messages (
+                        ID INTEGER PRIMARY KEY AUTOINCREMENT,
+                        senderID INTEGER,
+                        contenu TEXT,
+                        group_id INTEGER,
+                        recipient_id INTEGER
+                    );
+                """;
+            cnx.createStatement().executeUpdate(createMessagesTable);
+
+            // Insertion d'un message sans préciser l'ID (auto-incrémenté)
+            String insertSQL = "INSERT INTO Messages (senderID, contenu, group_id, recipient_id) VALUES (?, ?, ?, ?)";
+            PreparedStatement pstmt = cnx.prepareStatement(insertSQL);
+            pstmt.setInt(1, 101);  // senderID
+            pstmt.setString(2, "Salut à tous, c'est Hanay !");  // contenu
+            pstmt.setInt(3, 1);    // group_id
+            pstmt.setInt(4, 202);  // recipient_id
+
+            boolean inserted = pstmt.executeUpdate() == 1;
+            System.out.println("Insertion réussie : " + inserted);
  
-            // Lecture des messages
+            // Lecture des messages de la table Messages
             String selectSQL = "SELECT * FROM Messages";
             ResultSet res = cnx.createStatement().executeQuery(selectSQL);
 
@@ -40,7 +57,7 @@ public class ExempleConnexionDB {
                     ", Recipient ID: " + res.getInt("recipient_id")
                 );
             }
-
+            cnx.close();
 
         } catch (SQLException e) {
             e.printStackTrace();
