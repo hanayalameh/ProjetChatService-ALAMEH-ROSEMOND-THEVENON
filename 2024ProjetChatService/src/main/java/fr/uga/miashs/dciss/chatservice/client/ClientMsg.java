@@ -136,7 +136,7 @@ public class ClientMsg {
 		            String pseudo = sc.nextLine();
 		            this.username = pseudo;
 
-		            // Crée la base avec pseudo et ID
+		            // Crée la base avec pseudo et ID. 
 		            this.clientDB = new ClientDB(pseudo);
 
 				// start the receive loop
@@ -222,6 +222,22 @@ public class ClientMsg {
 		notifyConnectionListeners(false);
 	}
 	
+	// Méthode ajoutée pour afficher l'historique basée sur getMessagesArrayBetween
+	public void afficherHistoriqueTableau(int autreId) {
+	    try {
+	        // Appel de la méthode pour récupérer le tableau de messages entre l'utilisateur courant et autreId
+	        String[] historique = clientDB.getMessagesArrayBetween(this.identifier, autreId);
+	        System.out.println("Historique des messages avec l'utilisateur " + autreId + " :");
+	        for (String msg : historique) {
+	            System.out.println(msg);
+	        }
+	    } catch (SQLException e) {
+	        System.out.println("Erreur lors de la récupération de l'historique : ");
+	        e.printStackTrace();
+	    }
+	}
+
+	
 	public static void main(String[] args) throws UnknownHostException, IOException, InterruptedException, SQLException {
 		ClientMsg c = new ClientMsg("localhost", 1667);
 
@@ -271,6 +287,11 @@ public class ClientMsg {
 			} catch (InputMismatchException | NumberFormatException e) {
 				System.out.println("Mauvais format");
 			}
+			
+			// TEST affichage de l'historique avec l'utilisateur d'ID 3
+			System.out.println("\n== Affichage de l'historique en tableau ==");
+			c.afficherHistoriqueTableau(3);
+
 
 		}
 

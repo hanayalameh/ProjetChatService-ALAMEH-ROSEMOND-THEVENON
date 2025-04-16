@@ -4,6 +4,8 @@ import java.io.File;
 import java.sql.*;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Scanner;
 
 public class ClientDB {
@@ -50,7 +52,7 @@ public class ClientDB {
 			// Vérifier si le fichier existe
 			File dbFile = new File("db/user_" + username + ".db");
 			if (dbFile.exists()) {
-				System.out.println("Base de données déjà existante à : " + dbFile.getAbsolutePath());
+				System.out.println("Base de données existante à : " + dbFile.getAbsolutePath());
 			} else {
 				System.out.println("Base de données non trouvée ou non créée");
 			}
@@ -59,8 +61,40 @@ public class ClientDB {
 			e.printStackTrace();
 		}
 	}
+	public List<String> getMessagesBetween(int personne1, int personne2) throws SQLException {
+        List<String> messages = new ArrayList<>();
+
+        String query = """
+            SELECT ID, senderID, recipient_id, contenu
+            FROM Messages
+            WHERE (senderID = ? AND recipient_id = ?)
+               OR (senderID = ? AND recipient_id = ?)
+            ORDER BY ID ASC
+        """;
+        try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+            pstmt.setInt(1, personne1);
+            pstmt.setInt(2, personne2);
+            pstmt.setInt(3, personne2);
+            pstmt.setInt(4, personne1);
+
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    int sender = rs.getInt("senderID");
+                    int recipient = rs.getInt("recipient_id");
+                    String content = rs.getString("contenu");
+                    messages.add("Vous " + sender + " à Lui/Elle " + recipient + " : " + content);
+                }
+            }
+        }
+        return messages;
+    }
 	
-	
+	public String[] getMessagesArrayBetween(int personne1, int personne2) throws SQLException {
+	    // Récupération de la liste existante
+	    List<String> messages = getMessagesBetween(personne1, personne2);
+	    // Conversion de la liste en tableau
+	    return messages.toArray(new String[0]);
+	}
 
 	public static void main(String[] args) {
 		Scanner sc = new Scanner(System.in);
