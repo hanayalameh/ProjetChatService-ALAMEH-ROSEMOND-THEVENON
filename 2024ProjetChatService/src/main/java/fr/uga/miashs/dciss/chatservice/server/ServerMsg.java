@@ -90,6 +90,10 @@ public class ServerMsg {
 		return groups.get(GroupID);
 	}
 	
+	public Map<Integer, GroupMsg> getGroups(){
+		return groups;
+	}
+	
 	// Methode utilisée pour savoir quoi faire d'un paquet
 	// reçu par le serveur
 	public void processPacket(Packet p) {
