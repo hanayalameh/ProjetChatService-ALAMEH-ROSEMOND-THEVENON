@@ -36,9 +36,11 @@ public class ClientMsg {
 	private String serverAddress;
 	private int serverPort;
 	private Integer[] connectedUsers;
+	private Integer[] ListgroupeNonOwner;
 	private Socket s;
 	private DataOutputStream dos;
 	private DataInputStream dis;
+	private String lastServerAnswer;
 	
 	private ClientDB clientDB;
 	private String username;
@@ -68,36 +70,78 @@ public class ClientMsg {
 		identifier = id;
 		mListeners = new ArrayList<>();
 		cListeners = new ArrayList<>();
-		
-		addMessageListener(p -> {
-			System.out.println("suivi bug");
-			byte type = p.data[0];
-			if (type==21 || type ==31) {
-				ByteBuffer buf =ByteBuffer.wrap(p.data);
-				buf.get();
-				int taille = buf.getInt();
-				connectedUsers = new Integer[taille]; 
-				for (int i =0; i<taille; i++) {
-					connectedUsers[i] = buf.getInt();
-					System.out.print(connectedUsers[i]);
-				}
-			} else
-			
-				System.out.println(p.srcId + " says to " + p.destId + ": " + new String(p.data));
-		
-
-	});
-		addConnectionListener(active ->  {if (!active) System.exit(0);});
-
 		try {
 			startSession();
 		} catch (UnknownHostException | SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+//		addMessageListener(p -> {
+//			System.out.println("suivi bug");
+//			byte type = p.data[0];
+//			if (type==21 || type ==31) {
+//				ByteBuffer buf =ByteBuffer.wrap(p.data);
+//				buf.get();
+//				int taille = buf.getInt();
+//				connectedUsers = new Integer[taille]; 
+//				for (int i =0; i<taille; i++) {
+//					connectedUsers[i] = buf.getInt();
+//					System.out.print(connectedUsers[i]);
+//				}
+//			} else
+//			
+//				System.out.println(p.srcId + " says to " + p.destId + ": " + new String(p.data));
+//		
+//
+//	});
+//		addConnectionListener(active ->  {if (!active) System.exit(0);});
+//
+//		try {
+//			startSession();
+//		} catch (UnknownHostException | SQLException e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		}
+//		
+//		System.out.println("Vous êtes : " + getIdentifier());
 		
-		System.out.println("Vous êtes : " + getIdentifier());
+	}
+	
+	public void setConnectedUsers(int taille) {
+		connectedUsers = new Integer[taille]; 
+	}
+	public void setListgroupeNonOwner(int taille) {
+		ListgroupeNonOwner = new Integer[taille];
+	}
+	
+	public void formatagePacket(Packet p) {
+		System.out.println("entrée formatage");
+		String resultat = null;
+		byte type = p.data[0];
+		if (type==21) {
+			ByteBuffer buf =ByteBuffer.wrap(p.data);
+			buf.get();
+			int taille = buf.getInt();
+			setConnectedUsers(taille);
+			resultat = "Vous avez bien recu le nombre d'utilisateurs connectes";
+		}
+		else if (type ==31) {
+			ByteBuffer buf =ByteBuffer.wrap(p.data);
+			buf.get();
+			int taille = buf.getInt();
+			setListgroupeNonOwner(taille);
+			resultat = "Vous avez bien recu les groupe de l utilisateurs";
+		}
+		else if (type ==41) resultat = "groupe cree avec success";
+		else if (type ==42) resultat="probleme lors de la creation du groupe";
+		else if (type == 43) resultat = "Vous n'avez pas l'autorisation d'ajouter un membre dans le groupe";
+		else if (type == 44) resultat = "Membre ajoute dans le groupe avec success";
+		else {
+			
+		}
 		
+		
+		this.lastServerAnswer = resultat;
 	}
 
 	/**
@@ -173,7 +217,7 @@ public class ClientMsg {
 		            this.username = "test";
 
 		            // Crée la base avec pseudo et ID. 
-		            this.clientDB = new ClientDB(pseudo);
+		            this.clientDB = new ClientDB(identifier);
 
 				// start the receive loop
 				new Thread(() -> {
@@ -193,6 +237,13 @@ public class ClientMsg {
 		}
 	}
 
+	public String createGroup(int identifier, int[] members) {
+		//Création du paquet
+		//envoie du paquet
+		//réception de la réponse
+		//stockage de la réponse
+		//return réponse.
+	}
 	/**
 	 * Send a packet to the specified destination (etiher a userId or groupId)
 	 * 
@@ -369,7 +420,7 @@ public class ClientMsg {
 	}
 	
 	// Méthode ajoutée pour afficher l'historique basée sur getMessagesArrayBetween
-	public void afficherHistoriqueTableau(int autreId) {
+	public String[] afficherHistoriqueTableau(int autreId) {
 	    try {
 	        // Appel de la méthode pour récupérer le tableau de messages entre l'utilisateur courant et autreId
 	        String[] historique = clientDB.getMessagesArrayBetween(this.identifier, autreId);
@@ -377,9 +428,12 @@ public class ClientMsg {
 	        for (String msg : historique) {
 	            System.out.println(msg);
 	        }
+	        return historique;
 	    } catch (SQLException e) {
 	        System.out.println("Erreur lors de la récupération de l'historique : ");
 	        e.printStackTrace();
+	        String[] pouet = {"1","2"};
+	        return pouet;
 	    }
 	}
 

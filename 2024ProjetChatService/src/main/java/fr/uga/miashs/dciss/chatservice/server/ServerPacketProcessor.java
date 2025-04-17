@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024.  Jerome David. Univ. Grenoble Alpes.
+* Copyright (c) 2024.  Jerome David. Univ. Grenoble Alpes.
  * This file is part of DcissChatService.
  *
  * DcissChatService is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -72,22 +72,58 @@ public class ServerPacketProcessor implements PacketProcessor {
 	}
 	
 	public void createGroup(int ownerId, ByteBuffer data) {
-		int nb = data.getInt();
-		GroupMsg g = server.createGroup(ownerId);
-		for (int i = 0; i < nb; i++) {
-			g.addMember(server.getUser(data.getInt()));
+		ByteArrayOutputStream bos = new ByteArrayOutputStream();
+		DataOutputStream dos = new DataOutputStream(bos);
+		UserMsg requester = server.getUser(ownerId);
+		
+		try {
+			int nb = data.getInt();
+			GroupMsg g = server.createGroup(ownerId);
+			for (int i = 0; i < nb; i++) {
+				g.addMember(server.getUser(data.getInt()));		
+			}
+			dos.writeByte(41);
+			dos.writeBoolean(true);
+			
+		} catch (Exception e) {
+			try {
+				dos.writeByte(42);
+				dos.writeBoolean(false);
+			} catch (IOException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
+			
 		}
+		requester.process(new Packet(ownerId, ownerId, bos.toByteArray()));
+		
+		
 	}
 	
 	public void ajoutMembreGroupe(int ownerId,int idUser,int idGroupe) {
 		// peux-etre que l on doit faire boolean, ce sera plus facile
 		GroupMsg g = server.getGroup(idGroupe);
-		if (ownerId!= g.getOwner().getId())
+		ByteArrayOutputStream bos = new ByteArrayOutputStream();
+		DataOutputStream dos = new DataOutputStream(bos);
+		UserMsg requester = server.getUser(ownerId);
+		try {
+			if (ownerId!= g.getOwner().getId())
 			{LOG.info("Permission Denied ");
-			return;}
+			dos.writeByte(43);
+			dos.writeBoolean(false);
+			
+					;}
 		System.out.println("ICI 2");
 		g.addMember(server.getUser(idUser));
+		dos.writeByte(44);
+		dos.writeBoolean(true);
 		LOG.info("User "+ idUser+ "a ete ajoute au groupe" + g.getId());
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		
 		
 	}
 	

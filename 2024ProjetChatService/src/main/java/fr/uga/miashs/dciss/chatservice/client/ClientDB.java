@@ -10,11 +10,12 @@ import java.util.Scanner;
 
 public class ClientDB {
 	private Connection connection;
-	private String pseudo;
+	private int id;
+	
 
-	public ClientDB(String pseudo) throws SQLException {
-		this.pseudo = pseudo;
-		String dbPath = "db/user_" + pseudo + ".db";
+	public ClientDB(int id) throws SQLException {
+		this.id = id;
+		String dbPath = "db/user_" + id + ".db";
 		connection = DriverManager.getConnection("jdbc:sqlite:" + dbPath);
 		createTables();
 	}
@@ -45,12 +46,12 @@ public class ClientDB {
 		pstmt.executeUpdate();
 	}
 
-	public static void initialiserClient(String username) {
+	public static void initialiserClient(int id) {
 		try {
-			ClientDB clientDB = new ClientDB(username);
+			ClientDB clientDB = new ClientDB(id);
 
 			// Vérifier si le fichier existe
-			File dbFile = new File("db/user_" + username + ".db");
+			File dbFile = new File("db/user_" + id + ".db");
 			if (dbFile.exists()) {
 				System.out.println("Base de données existante à : " + dbFile.getAbsolutePath());
 			} else {

@@ -26,6 +26,7 @@ import javax.swing.DefaultListModel;
 import java.awt.event.ActionListener;
 import java.io.IOException;
 import java.net.UnknownHostException;
+import java.nio.ByteBuffer;
 import java.sql.SQLException;
 import java.util.Timer;
 import java.awt.event.ActionEvent;
@@ -95,21 +96,24 @@ public class UIClient {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-//		this.client.addMessageListener(p -> System.out.println(p.srcId + " says to " + p.destId + ": " + new String(p.data)));
-//		this.client.addConnectionListener(active ->  {if (!active) System.exit(0);});
-//		try {
-//			this.client.startSession();
-//		} catch (UnknownHostException e) {
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
-//		} catch (SQLException e) {
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
-//		}
+
+		client.addMessageListener(p -> {client.formatagePacket(p);});
+		client.addConnectionListener(active ->  {if (!active) System.exit(0);});
+		
+		try {
+			client.startSession();
+		} catch (UnknownHostException | SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+
 		//Add requete list users
 		System.out.println("Vous êtes : " + this.client.getIdentifier());
 		
 		initialize();
+		Integer[] var = client.getConnectedUsers();
+		System.out.println(var);
 	}
 	
 	public void refresh() {
@@ -118,7 +122,9 @@ public class UIClient {
 		//client.getGroupsOwn():
 		System.out.println("entrée refresh");
 		model.clear();
-		connectedUsers = client.getConnectedUsers();
+		Integer[] pouet = {1,2,3};
+		connectedUsers = pouet;
+		//connectedUsers = client.getConnectedUsers();
 		for (int i = 0; i < connectedUsers.length ; i += 1) {
 			model.addElement(connectedUsers[i]);
 		}
@@ -201,8 +207,8 @@ public class UIClient {
                 	lblInfoMsg.setText("Vous ne pouvez pas être seul.e dans un groupe");
                 } else {
                 	
-//                client.createGroup(c.getIdentifier(), membersTab);
-                	lblInfoMsg.setText("Groupe Créé !");
+                String reponse = client.createGroupData(client.getIdentifier(), membersTab);
+                	lblInfoMsg.setText(reponse);
                 	lblInfoMsg.setForeground(Color.BLUE);
 
                 }
@@ -247,7 +253,7 @@ public class UIClient {
 						j += 1;
 					}
 				}
-				//client.addToGroup(groupAndMember[0], groupAndMember[1]);
+				client.addUserToGroup(groupAndMember[0], groupAndMember[1]);
 				
 				System.out.println(addGroup);
 				//client.leaveGroup(int);
@@ -287,7 +293,9 @@ public class UIClient {
 	    model = new DefaultListModel<Integer>();
 	    
 	    //-------------REMAKE-----------//
-	    connectedUsers = client.getConnectedUsers();
+	    Integer[] pouet = {1,2,3};
+	    connectedUsers = pouet;
+	    System.out.println(connectedUsers);
 	    for (Integer s : connectedUsers) {
 	      model.addElement(s);
 	    }
@@ -300,11 +308,11 @@ public class UIClient {
 				lblSelectedUser.setText("Vous écrivez à "+selectedUser);
 				lblInbox.setText("Conversation avec " + selectedUser);
 				
-				txtAInbox.setText("Debut de la conversation avec " + selectedUser);
+				txtAInbox.setText("Debut de la conversation avec " + selectedUser+ "\n");
 				//String[] conversation = client.getConversation(int);
-				String[] conversation = new String[50];
+				String[] conversation = client.afficherHistoriqueTableau(selectedUser);
 				for(int i = 0; i < conversation.length; i += 1) {
-					txtAInbox.setText(txtAInbox.getText() + i + "\n");
+					txtAInbox.setText(txtAInbox.getText() + conversation[i] + "\n");
 				}
 				refresh();
 			}
