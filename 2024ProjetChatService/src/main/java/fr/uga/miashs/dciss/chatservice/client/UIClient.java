@@ -9,6 +9,7 @@ import java.awt.Color;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
 import javax.swing.JPanel;
 import java.awt.GridLayout;
 import javax.swing.JTextArea;
@@ -28,6 +29,8 @@ import java.io.IOException;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Timer;
 import java.awt.event.ActionEvent;
 import java.awt.FlowLayout;
@@ -41,6 +44,9 @@ import java.awt.event.MouseEvent;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
 import javax.swing.event.MenuListener;
+
+import fr.uga.miashs.dciss.chatservice.server.UserMsg;
+
 import javax.swing.event.MenuEvent;
 
 public class UIClient {
@@ -97,7 +103,127 @@ public class UIClient {
 			e.printStackTrace();
 		}
 
-		client.addMessageListener(p -> {client.formatagePacket(p);});
+		client.addMessageListener(p -> {
+		    byte type = p.data[0];
+		    ByteBuffer buf = ByteBuffer.wrap(p.data);
+		    buf.get();  // skip the type byte
+
+		    switch (type) {
+		        case 21: {  
+		            int count = buf.getInt();
+		            Integer[] users = new Integer[count];
+		            for (int i = 0; i < count; i++) {
+		                users[i] = buf.getInt();
+		            }
+		            SwingUtilities.invokeLater(() -> {
+		                model.clear();
+		                for (Integer u : users) {
+		                    model.addElement(u);
+		                }
+		            });
+		            break;
+		        }
+
+		        case 34: {  
+		            int n = buf.getInt();
+		            Integer[] groups = new Integer[n];
+		            for (int i = 0; i < n; i++) {
+	
+		                client.setLastOwnedGroups(buf.getInt());
+		            }
+		            
+		            break;
+		        }
+
+		        case 36: {  
+		            int groupId = buf.getInt();
+		            int count = buf.getInt();
+		            int[] others = new int[count];
+		            for (int i = 0; i < count; i++) {
+		                others[i] = buf.getInt();
+		            }
+		            client.setLastOtherUsers(groupId, others);
+		            break;
+		        }
+
+		        case 41: case 42: {  
+		            boolean success = buf.get() != 0;
+		            System.out.println(success);
+		           
+		            SwingUtilities.invokeLater(() -> {
+		                if (type == 41 && success) {
+		                	 int createdGroupId = buf.getInt();
+		                    lblInfoMsg.setForeground(Color.BLUE);
+		                    lblInfoMsg.setText("Groupe " + createdGroupId + " créé avec succès");
+		                    client.setLastOwnedGroups(createdGroupId);
+		                    
+		                    try {
+								client.requestUsersNotInGroup(createdGroupId);
+							} catch (SQLException e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+							}
+		                } else {
+		                    lblInfoMsg.setForeground(Color.RED);
+		                    lblInfoMsg.setText("Erreur création groupe");
+		                }
+		            });
+		            break;
+		        }
+
+		        case 43: case 44: {  
+		            boolean success = buf.get() != 0;
+		            int targetGroup = buf.getInt();
+		            SwingUtilities.invokeLater(() -> {
+		                if (type == 44 && success) {
+		                    lblInfoMsg.setForeground(Color.BLUE);
+		                    int userId = buf.getInt();
+		                    client.setLastOtherUsers(targetGroup, userId);
+		                    lblInfoMsg.setText("Utilisateur ajouté au groupe " + targetGroup);
+		                } else {
+		                    lblInfoMsg.setForeground(Color.RED);
+		                    lblInfoMsg.setText("Échec ajout au groupe");
+		                }
+		            });
+		            break;
+		        }
+
+		        case 45: {  
+		            int joinedGroup = buf.getInt();
+		            SwingUtilities.invokeLater(() ->
+		                JOptionPane.showMessageDialog(frame,
+		                    "Vous avez été ajouté au groupe " + joinedGroup)
+		            );
+		            break;
+		        }
+
+		        case 46: case 47: {  
+		            boolean success = buf.get() != 0;
+		            int deletedGroup = buf.getInt();
+		            SwingUtilities.invokeLater(() -> {
+		                if (type == 46 && success) {
+		                    lblInfoMsg.setForeground(Color.BLUE);
+		                    lblInfoMsg.setText("Groupe " + deletedGroup + " quitté avec succès");
+		                } else {
+		                    lblInfoMsg.setForeground(Color.RED);
+		                    lblInfoMsg.setText("Échec de quitter le groupe");
+		                }
+		            });
+		            break;
+		        }
+
+		        case 48: { 
+		            int removedGroup = buf.getInt();
+		            SwingUtilities.invokeLater(() ->
+		                JOptionPane.showMessageDialog(frame,
+		                    "Vous avez quitté le groupe " + removedGroup)
+		            );
+		            break;
+		        }
+		    }
+		});
+
+
 		client.addConnectionListener(active ->  {if (!active) System.exit(0);});
 		
 		try {
@@ -207,9 +333,13 @@ public class UIClient {
                 	lblInfoMsg.setText("Vous ne pouvez pas être seul.e dans un groupe");
                 } else {
                 	
-                String reponse = client.createGroupData(client.getIdentifier(), membersTab);
-                	lblInfoMsg.setText(reponse);
-                	lblInfoMsg.setForeground(Color.BLUE);
+                	 try {
+                         client.sendCreateGroup(membersTab);
+                         
+                     } catch (SQLException ex) {
+                         lblInfoMsg.setForeground(Color.RED);
+                         lblInfoMsg.setText("Erreur d’envoi de la requête");
+                     }
 
                 }
             }
@@ -220,49 +350,82 @@ public class UIClient {
 		// -------------------  ADD TO GROUP ---------------------------//
 
 		JButton btnAddToGroup = new JButton("Ajouter à un groupe");
-		btnAddToGroup.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				
-				String myGroupsStr = "";
+		btnAddToGroup.addActionListener(e -> {
+		    try {
+		        client.requestGroupsOwned();
+		    } catch (SQLException ex) {
+		        lblInfoMsg.setForeground(Color.RED);
+		        lblInfoMsg.setText("Erreur de requête des groupes");
+		        return;
+		    }
 
-				int[] myGroups2 = {1,2,3,4,5};
-				for (int i = 0; i < myGroups2.length ; i += 1) {
-					myGroupsStr += myGroups2[i] + ", ";
-				}
-				
-				String addGroup = JOptionPane.showInputDialog(frame,
-                        "Vous êtes admin des groupes : " + myGroupsStr + ". Pour ajouter une personne faire 'idGroup:idPersonne'", null);
-				int[] groupAndMember = new int[2];
-				int j = 0;
-				String tmpStr = "";
-				System.out.println(addGroup);
-				for(int i = 0; i < addGroup.length() && j < 2; i += 1 ) {
-					char currChar = addGroup.charAt(i);
-					System.out.println(addGroup.charAt(i));
-					if (currChar >= '0' && currChar <= '9') {
-						tmpStr = tmpStr + addGroup.charAt(i);
+		
+		    StringBuilder sbGroups = new StringBuilder();
+		    int nombreDeGroupe=0;
+		    for (int i=0; i<client.getLastOwnedGroups().length;i++) {
+		    	if (client.getLastOwnedGroups()[i]!= null) {
+		    		nombreDeGroupe++;
+		    	}
+		    }
+		    if (client.getLastOwnedGroups() != null && client.getLastOwnedGroups().length > 0) {
+		        for (int i=0; i<nombreDeGroupe;i++) {
+		        	 sbGroups.append(client.getLastOwnedGroups()[i]).append(", ");
+		        	 sbGroups.setLength(sbGroups.length() - 2);
+		        }
+		    	
+		    } else {
+		        lblInfoMsg.setForeground(Color.RED);
+		        lblInfoMsg.setText("Vous n'administrez aucun groupe");
+		        return;
+		    }
 
-					} else if (currChar == '-' && tmpStr.length() == 0 && j ==0) {
-						tmpStr = tmpStr + addGroup.charAt(i);
-					} else {
-						System.out.println("Suivi bug");
+		    String inputGroup = JOptionPane.showInputDialog(
+		        frame,
+		        "Vous êtes admin des groupes : " + sbGroups + "\nEntrez l'ID du groupe :",
+		        null
+		    );
+		    if (inputGroup == null || inputGroup.isBlank()) return;
+		    int groupId = Integer.parseInt(inputGroup.trim());
 
-						System.out.println(tmpStr);
-						groupAndMember[j] = Integer.parseInt(tmpStr);
-						tmpStr = "";
-						j += 1;
-					}
-				}
-				client.addUserToGroup(groupAndMember[0], groupAndMember[1]);
-				
-				System.out.println(addGroup);
-				//client.leaveGroup(int);
-            	lblInfoMsg.setText(groupAndMember[1] + " a bien été ajouté.e au groupe" + groupAndMember[0]);
-            	lblInfoMsg.setForeground(Color.BLUE);
-				refresh();
-			}
+		    try {
+		        client.requestUsersNotInGroup(groupId);
+		    } catch (SQLException ex) {
+		        lblInfoMsg.setForeground(Color.RED);
+		        lblInfoMsg.setText("Erreur de requête des utilisateurs");
+		        return;
+		    }
+
+		    StringBuilder sbUsers = new StringBuilder();
+		    int[] members = client.getLastOtherUsers().get(groupId);
+		    
+		    if (members != null && members.length > 0) {
+		        for (Integer uid : members) {
+		            sbUsers.append(uid).append(", ");
+		        }
+		        sbUsers.setLength(sbUsers.length() - 2);
+		    } else {
+		        lblInfoMsg.setForeground(Color.RED);
+		        lblInfoMsg.setText("Aucun utilisateur à ajouter");
+		        return;
+		    }
+
+		    String inputUser = JOptionPane.showInputDialog(
+		        frame,
+		        "Utilisateurs disponibles : " + sbUsers + "\nEntrez l'ID de l'utilisateur :",
+		        null
+		    );
+		    if (inputUser == null || inputUser.isBlank()) return;
+		    int userId = Integer.parseInt(inputUser.trim());
+
+		    try {
+		        client.sendAddUserToGroup(groupId, userId);
+		    } catch (SQLException ex) {
+		        lblInfoMsg.setForeground(Color.RED);
+		        lblInfoMsg.setText("Erreur d’envoi de la requête d’ajout");
+		    }
 		});
 		panRight.add(btnAddToGroup);
+
 		
 		// -------------------  MENU ---------------------------//
 
@@ -327,27 +490,45 @@ public class UIClient {
 		// -------------------  LEAVE GROUP ---------------------------//
 
 		JButton btnLeaveGroup = new JButton("Quitter un groupe");
-		btnLeaveGroup.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				String myGroupsStr = "";
-				int[] myGroups2 = {1,2,3,4,5};
-				for (int i = 0; i < myGroups2.length ; i += 1) {
-					myGroupsStr += myGroups2[i] + ", ";
-				}
-				
-				String leaveGroup = JOptionPane.showInputDialog(frame,
-                        "Vous appartenez aux groupes : " + myGroupsStr + ". Quel groupe voulez-vous quitter ?", null);
-				int groupToLeave = Integer.parseInt(leaveGroup);
-				System.out.println(leaveGroup);
-				//client.leaveGroup(int);
-            	lblInfoMsg.setText("Vous avez bien quitté le groupe" + leaveGroup);
-            	lblInfoMsg.setForeground(Color.BLUE);
-				refresh();
-				//////END////
-			}
+		btnLeaveGroup.addActionListener(e -> {
+		    try {
+		        client.requestGroupsToLeave();
+		    } catch (SQLException ex) {
+		        lblInfoMsg.setForeground(Color.RED);
+		        lblInfoMsg.setText("Erreur lors de la requête des groupes");
+		        return;
+		    }
+
+		    Integer[] myGroups = client.getListGroupeNonOwner();
+		    if (myGroups == null || myGroups.length == 0) {
+		        lblInfoMsg.setForeground(Color.RED);
+		        lblInfoMsg.setText("Vous n'appartenez à aucun groupe");
+		        return;
+		    }
+
+		    StringBuilder sb = new StringBuilder();
+		    for (Integer gid : myGroups) {
+		        sb.append(gid).append(", ");
+		    }
+		    sb.setLength(sb.length() - 2);
+
+		    String input = JOptionPane.showInputDialog(
+		        frame,
+		        "Vous appartenez aux groupes : " + sb + "\nQuel groupe voulez-vous quitter ?",
+		        null
+		    );
+		    if (input == null || input.isBlank()) return;
+
+		    int groupToLeave = Integer.parseInt(input.trim());
+
+		    try {
+		        client.sendDeleteUserToGroup(groupToLeave, client.getIdentifier());
+		    } catch (SQLException ex) {
+		        lblInfoMsg.setForeground(Color.RED);
+		        lblInfoMsg.setText("Erreur d’envoi de la requête");
+		    }
 		});
 		panRight.add(btnLeaveGroup);
-		
 		
 		// -------------------  Delete GROUP ---------------------------//
 

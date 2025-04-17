@@ -79,6 +79,7 @@ public class ServerMsg {
 		UserMsg u =users.remove(userId);
 		if (u==null) return false;
 		u.beforeDelete();
+		broadcastConnectedUsers();
 		return true;
 	}
 	
@@ -95,7 +96,13 @@ public class ServerMsg {
 	public Map<Integer, GroupMsg> getGroups(){
 		return groups;
 	}
-	
+	public void broadcastConnectedUsers() {
+	    for (UserMsg u : users.values()) {
+	        if (u.isConnected()) {
+	            sp.requestConnectedUsers(u.getId());
+	        }
+	    }
+	}
 	// Methode utilisée pour savoir quoi faire d'un paquet
 	// reçu par le serveur
 	public void processPacket(Packet p) {
@@ -148,6 +155,7 @@ public class ServerMsg {
 				if (x.open(s)) {
 					LOG.info(userId + " connected");
 					// lancement boucle de reception
+					broadcastConnectedUsers();
 					executor.submit(() -> x.receiveLoop());
 					// lancement boucle d'envoi
 					executor.submit(() -> x.sendLoop());

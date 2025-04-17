@@ -15,7 +15,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.Set;
 import java.util.logging.Logger;
 
@@ -45,6 +47,7 @@ public class ServerPacketProcessor implements PacketProcessor {
 		case 1:
 			createGroup(p.srcId,buf);
 			break;
+		
 		case 3:
 			int clientRequete = p.srcId;
 			int idUser = buf.getInt();
@@ -66,6 +69,21 @@ public class ServerPacketProcessor implements PacketProcessor {
 			requester = buf.getInt();
 			ListGroupNonOwner(requester);
 			break;
+		case 2:
+		    int gid = buf.getInt();
+		    boolean ok = server.removeGroup(gid);
+		    break;
+		case 33: {
+	        requester = buf.getInt();
+	        requestGroupsOwned(requester);
+	        break;
+	      }
+	      case 35: {
+	        requester = buf.getInt();
+	        int groupId   = buf.getInt();
+	        requestUsersNotInGroup(requester, groupId);
+	        break;
+	      }
 		default:
 			erreurs(type);
 		}
@@ -77,13 +95,17 @@ public class ServerPacketProcessor implements PacketProcessor {
 		UserMsg requester = server.getUser(ownerId);
 		
 		try {
-			int nb = data.getInt();
-			GroupMsg g = server.createGroup(ownerId);
-			for (int i = 0; i < nb; i++) {
-				g.addMember(server.getUser(data.getInt()));		
-			}
+			 int nb = data.getInt();                      
+			    GroupMsg g = server.createGroup(ownerId);   
+			    for (int k = 0; k < nb; k++) {
+			        int memberId = data.getInt();
+			        g.addMember(server.getUser(memberId));
+			    }
+			
 			dos.writeByte(41);
 			dos.writeBoolean(true);
+			dos.writeInt(g.getId());
+			dos.flush();
 			
 		} catch (Exception e) {
 			try {
@@ -100,43 +122,77 @@ public class ServerPacketProcessor implements PacketProcessor {
 		
 	}
 	
-	public void ajoutMembreGroupe(int ownerId,int idUser,int idGroupe) {
-		// peux-etre que l on doit faire boolean, ce sera plus facile
-		GroupMsg g = server.getGroup(idGroupe);
-		ByteArrayOutputStream bos = new ByteArrayOutputStream();
-		DataOutputStream dos = new DataOutputStream(bos);
-		UserMsg requester = server.getUser(ownerId);
-		try {
-			if (ownerId!= g.getOwner().getId())
-			{LOG.info("Permission Denied ");
-			dos.writeByte(43);
-			dos.writeBoolean(false);
-			
-					;}
-		System.out.println("ICI 2");
-		g.addMember(server.getUser(idUser));
-		dos.writeByte(44);
-		dos.writeBoolean(true);
-		LOG.info("User "+ idUser+ "a ete ajoute au groupe" + g.getId());
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
-		
-		
+	public void ajoutMembreGroupe(int ownerId, int idUser, int idGroupe) {
+	    GroupMsg g = server.getGroup(idGroupe);
+	    UserMsg requester = server.getUser(ownerId);
+	    ByteArrayOutputStream bos = new ByteArrayOutputStream();
+	    DataOutputStream dos = new DataOutputStream(bos);
+
+	    try {
+	        if (ownerId != g.getOwner().getId()) {
+	            dos.writeByte(43);       
+	            dos.writeBoolean(false);
+	            dos.flush();
+	            requester.process(new Packet(ownerId, ownerId, bos.toByteArray()));
+	            return;
+	        }
+
+	        g.addMember(server.getUser(idUser));
+
+	        dos.writeByte(44);         
+	        dos.writeBoolean(true);
+	        dos.writeInt(idGroupe);
+	        dos.writeInt(idUser);
+	        dos.flush();
+
+	        UserMsg newUser = server.getUser(idUser);
+	        ByteArrayOutputStream bos2 = new ByteArrayOutputStream();
+	        DataOutputStream dos2      = new DataOutputStream(bos2);
+	        dos2.writeByte(45);          
+	        dos2.writeInt(idGroupe);
+	        dos2.flush();
+	        newUser.process(new Packet(ownerId, idUser, bos2.toByteArray()));
+
+	    } catch (IOException e) {
+	        e.printStackTrace();
+	    }
+	    
+	    requester.process(new Packet(ownerId, ownerId, bos.toByteArray()));
 	}
 	
-	public void deleteMembreGroupe(int ownerId,int idUser,int idGroupe) {
-		// peux-etre que l on doit faire boolean, ce sera plus facile
-		GroupMsg g = server.getGroup(idGroupe);
-		if (ownerId == g.getOwner().getId())
-			{LOG.info("Vous ne pouvez pas quitter un groupe que vous avez cree ");
-			return;}
-		g.removeMember(server.getUser(idUser));
-		LOG.info("User "+ idUser+ "a ete retire au groupe" + g.getId());
-		
+	public void deleteMembreGroupe(int ownerId, int idUser, int idGroupe) {
+	    GroupMsg g = server.getGroup(idGroupe);
+	    UserMsg requester = server.getUser(ownerId);
+	    ByteArrayOutputStream bos = new ByteArrayOutputStream();
+	    DataOutputStream dos = new DataOutputStream(bos);
+
+	    try {
+	        if (ownerId == g.getOwner().getId()) {
+	            dos.writeByte(47);      
+	            dos.writeBoolean(false);
+	        } else {
+	            boolean removed = g.removeMember(server.getUser(idUser));
+	            if (removed) {
+	                dos.writeByte(46);  
+	                dos.writeBoolean(true);
+
+	                UserMsg removedUser = server.getUser(idUser);
+	                ByteArrayOutputStream bos2 = new ByteArrayOutputStream();
+	                DataOutputStream dos2 = new DataOutputStream(bos2);
+	                dos2.writeByte(48);        
+	                dos2.writeInt(idGroupe);
+	                removedUser.process(new Packet(ownerId, idUser, bos2.toByteArray()));
+	            } else {
+	                dos.writeByte(47);
+	                dos.writeBoolean(false);
+	            }
+	        }
+	    } catch (IOException e) {
+	        e.printStackTrace();
+	    }
+	    requester.process(new Packet(ownerId, ownerId, bos.toByteArray()));
 	}
+
 	public void requestConnectedUsers(int requestID) {
 		
 		Collection <UserMsg> clients = server.getUsers().values();
@@ -182,6 +238,49 @@ public class ServerPacketProcessor implements PacketProcessor {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+	}
+	
+	public void requestGroupsOwned(int requesterId) {
+	    UserMsg u = server.getUser(requesterId);
+	    ByteArrayOutputStream bos = new ByteArrayOutputStream();
+	    DataOutputStream dos = new DataOutputStream(bos);
+	    try {
+	        dos.writeByte(34);                      
+	        List<Integer> owned = new ArrayList<>();
+	        for (GroupMsg g : server.getGroups().values()) {
+	            if (g.getOwner().getId() == requesterId) {
+	                owned.add(g.getId());
+	            }
+	        }
+	        dos.writeInt(owned.size());
+	        for (int gid : owned) dos.writeInt(gid);
+	    } catch (IOException ex) {}
+	    u.process(new Packet(requesterId, requesterId, bos.toByteArray()));
+	}
+
+	
+	public void requestUsersNotInGroup(int requesterId, int groupId) {
+	    UserMsg u = server.getUser(requesterId);
+	    GroupMsg g = server.getGroup(groupId);
+	    ByteArrayOutputStream bos = new ByteArrayOutputStream();
+	    DataOutputStream dos = new DataOutputStream(bos);
+	    try {
+	        dos.writeByte(36);
+	        dos.writeInt(groupId);
+	        Set<UserMsg> members = g.getMembers();
+	        List<Integer> others = new ArrayList<>();
+	        for (UserMsg x : server.getUsers().values()) {
+	            if (x.isConnected() && !members.contains(x)) {
+	                others.add(x.getId());
+	            }
+	        }
+	        System.out.println("Server: group " + groupId +
+		    	    " others=" + others);
+	        dos.writeInt(others.size());
+	        for (int uid : others) dos.writeInt(uid);
+	    } catch (IOException ex) {}
+	    
+	    u.process(new Packet(requesterId, requesterId, bos.toByteArray()));
 	}
 	public String erreurs(byte t) {
 		String s = null;

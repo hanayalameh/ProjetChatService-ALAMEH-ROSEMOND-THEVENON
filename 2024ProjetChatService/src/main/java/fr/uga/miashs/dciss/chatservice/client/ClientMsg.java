@@ -21,6 +21,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 
 import fr.uga.miashs.dciss.chatservice.common.Packet;
+import fr.uga.miashs.dciss.chatservice.server.GroupMsg;
 import fr.uga.miashs.dciss.chatservice.client.MessageListener;
 
 /**
@@ -41,7 +42,10 @@ public class ClientMsg {
 	private DataOutputStream dos;
 	private DataInputStream dis;
 	private String lastServerAnswer;
-	
+	private Integer[] lastOwnedGroups;
+	//private Integer[] lastOtherUsers;
+	private Map<Integer, int[]> lastOtherUsers;
+	private Integer[] listGroupeNonOwner;
 	private ClientDB clientDB;
 	private String username;
 
@@ -70,6 +74,7 @@ public class ClientMsg {
 		identifier = id;
 		mListeners = new ArrayList<>();
 		cListeners = new ArrayList<>();
+		lastOtherUsers   = new HashMap<>();
 		try {
 			startSession();
 		} catch (UnknownHostException | SQLException e) {
@@ -132,10 +137,31 @@ public class ClientMsg {
 			setListgroupeNonOwner(taille);
 			resultat = "Vous avez bien recu les groupe de l utilisateurs";
 		}
+		if (type == 34) {
+			ByteBuffer buf =ByteBuffer.wrap(p.data);
+		    buf.get(); int n = buf.getInt();
+		    lastOwnedGroups = new Integer[n];
+		    for (int i = 0; i < n; i++) lastOwnedGroups[i] = buf.getInt();
+		    return;
+		}
+//		if (type == 36) {
+//			ByteBuffer buf =ByteBuffer.wrap(p.data);
+//		    buf.get(); int n = buf.getInt();
+//		    lastOtherUsers = new Integer[n];
+//		    for (int i = 0; i < n; i++) lastOtherUsers[i] = buf.getInt();
+//		    return;
+//		}
+		
 		else if (type ==41) resultat = "groupe cree avec success";
 		else if (type ==42) resultat="probleme lors de la creation du groupe";
 		else if (type == 43) resultat = "Vous n'avez pas l'autorisation d'ajouter un membre dans le groupe";
 		else if (type == 44) resultat = "Membre ajoute dans le groupe avec success";
+		if (type == 45) {
+			ByteBuffer buf =ByteBuffer.wrap(p.data);
+		    buf.get(); int addedGid = buf.getInt();
+		    lastServerAnswer = "Vous avez été ajouté au groupe " + addedGid;
+		    return;
+		}
 		else {
 			
 		}
@@ -237,13 +263,7 @@ public class ClientMsg {
 		}
 	}
 
-	public String createGroup(int identifier, int[] members) {
-		//Création du paquet
-		//envoie du paquet
-		//réception de la réponse
-		//stockage de la réponse
-		//return réponse.
-	}
+
 	/**
 	 * Send a packet to the specified destination (etiher a userId or groupId)
 	 * 
@@ -276,6 +296,34 @@ public class ClientMsg {
 		this.createRequestConnectedUsersData(identifier);
 		return connectedUsers;
 	}
+	public Integer[] getLastOwnedGroups() { return lastOwnedGroups; }
+	public void setLastOwnedGroups(int groupeId) {
+		if (lastOwnedGroups == null) {
+			lastOwnedGroups = new Integer[255];
+			lastOwnedGroups[0]= groupeId;
+		} else {
+			int taille = 0;
+			for (int i=0; i<lastOwnedGroups.length;i++)
+				if(lastOwnedGroups[i]!= null) taille++; 
+			lastOwnedGroups[taille+1] = groupeId;
+		}
+	}
+	public void setLastOtherUsers(int groupId, int[] members) {
+		
+		lastOtherUsers.put(groupId, members);
+		System.out.println("Ajouter les autres utilisateurs");
+	}
+	public void setLastOtherUsers(int groupId, int member) {
+		if (!lastOtherUsers.containsKey(groupId)) throw new IllegalArgumentException("Le groupe "+ groupId + "n'existe pas");
+		int[] members = lastOtherUsers.get(groupId);
+		int [] newMembers = new int[members.length +1];
+		for(int i=0; i< members.length-2;i++) {
+			newMembers[i] = members[i];
+		}
+		newMembers[newMembers.length-1] = member;
+		setLastOtherUsers(groupId,newMembers );
+	}
+	public Map<Integer, int[]> getLastOtherUsers() { return lastOtherUsers; }
 	public byte[] addUserToGroup(int groupId, int userId) {
 		ByteArrayOutputStream bos = new ByteArrayOutputStream();
 		DataOutputStream dos = new DataOutputStream(bos);
@@ -290,6 +338,20 @@ public class ClientMsg {
 		}
 		return bos.toByteArray();
 	}
+	
+	public void requestGroupsToLeave() throws SQLException {
+	    sendPacket(0, listGroupeNonOwner(getIdentifier()));
+	}
+	public void setListGroupeNonOwner(Integer[] groups) {
+	    this.listGroupeNonOwner = groups;
+	}
+	public Integer[] getListGroupeNonOwner() {
+	    return listGroupeNonOwner;
+	}
+	public void sendAddUserToGroup(int groupId, int userId) throws SQLException {
+	    byte[] payload = addUserToGroup(groupId, userId);
+	    sendPacket(0, payload);
+	}
 	public byte[] deleteUserToGroup(int groupId, int userId) {
 		ByteArrayOutputStream bos = new ByteArrayOutputStream();
 		DataOutputStream dos = new DataOutputStream(bos);
@@ -303,6 +365,10 @@ public class ClientMsg {
 			e.printStackTrace();
 		}
 		return bos.toByteArray();
+	}
+	public void sendDeleteUserToGroup(int groupId, int userId) throws SQLException{
+		byte[] payload = deleteUserToGroup(groupId, userId);
+	    sendPacket(0, payload);
 	}
 	public void createRequestConnectedUsersData(int resquester) {
 		ByteArrayOutputStream bos = new ByteArrayOutputStream();
@@ -322,6 +388,35 @@ public class ClientMsg {
 		
 		
 	}
+	public void requestGroupsOwned() throws SQLException {
+	    ByteArrayOutputStream bos = new ByteArrayOutputStream();
+	    try {
+			new DataOutputStream(bos).writeByte(33);
+			 new DataOutputStream(bos).writeInt(identifier);
+			 dos.flush();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	   
+	    sendPacket(0, bos.toByteArray());
+	}
+
+	public void requestUsersNotInGroup(int groupId) throws SQLException {
+	    ByteArrayOutputStream bos = new ByteArrayOutputStream();
+	    DataOutputStream dos = new DataOutputStream(bos);
+	    try {
+			dos.writeByte(35);
+			 dos.writeInt(identifier);
+			    dos.writeInt(groupId);
+			    dos.flush();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	   
+	    sendPacket(0, bos.toByteArray());
+	}
 	
 	public byte[] listGroupeNonOwner(int resquester) {
 		ByteArrayOutputStream bos = new ByteArrayOutputStream();
@@ -337,7 +432,7 @@ public class ClientMsg {
 		
 		return bos.toByteArray();
 	}
-	public byte[] createGroupData(int OwnerId, int[] members) {
+	public byte[] createGroupData(int[] members) {
 		
 		ByteArrayOutputStream bos = new ByteArrayOutputStream();
 		DataOutputStream dos = new DataOutputStream(bos);
@@ -348,12 +443,9 @@ public class ClientMsg {
 		}
 		try {
 			dos.writeByte(1);
-			dos.writeInt(OwnerId);
-			dos.writeInt(i+1);
-			dos.writeInt(OwnerId);
-			for (int j =0; j< i;j++) {
-				dos.writeInt(members[j]);
-			}
+			dos.writeInt(i);
+			for (int j = 0; j < i; j++)
+			    dos.writeInt(members[j]);
 			dos.flush();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
@@ -361,7 +453,22 @@ public class ClientMsg {
 		}
 		return bos.toByteArray();
 	}
-	
+	public void sendCreateGroup(int[] members) throws SQLException {
+	    byte[] data = createGroupData(members);
+	    sendPacket(0, data);
+	}
+	public byte[] deleteGroupData(int groupId) throws IOException {
+	    ByteArrayOutputStream bos = new ByteArrayOutputStream();
+	    DataOutputStream dos = new DataOutputStream(bos);
+	    dos.writeByte(2);
+	    dos.writeInt(groupId);
+	    dos.flush();
+	    return bos.toByteArray();
+	}
+	public void sendDeleteGroup(int groupId) throws SQLException, IOException {
+	    sendPacket(0, deleteGroupData(groupId));
+	}
+
 
 	/**
 	 * Start the receive loop. Has to be called only once.
