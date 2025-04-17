@@ -35,7 +35,7 @@ public class ClientMsg {
 
 	private String serverAddress;
 	private int serverPort;
-
+	private Integer[] connectedUsers;
 	private Socket s;
 	private DataOutputStream dos;
 	private DataInputStream dis;
@@ -69,7 +69,35 @@ public class ClientMsg {
 		mListeners = new ArrayList<>();
 		cListeners = new ArrayList<>();
 		
+		addMessageListener(p -> {
+			System.out.println("suivi bug");
+			byte type = p.data[0];
+			if (type==21 || type ==31) {
+				ByteBuffer buf =ByteBuffer.wrap(p.data);
+				buf.get();
+				int taille = buf.getInt();
+				connectedUsers = new Integer[taille]; 
+				for (int i =0; i<taille; i++) {
+					connectedUsers[i] = buf.getInt();
+					System.out.print(connectedUsers[i]);
+				}
+			} else
+			
+				System.out.println(p.srcId + " says to " + p.destId + ": " + new String(p.data));
+		
 
+	});
+		addConnectionListener(active ->  {if (!active) System.exit(0);});
+
+		try {
+			startSession();
+		} catch (UnknownHostException | SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		System.out.println("Vous êtes : " + getIdentifier());
+		
 	}
 
 	/**
@@ -95,6 +123,7 @@ public class ClientMsg {
 			mListeners.add(l);
 	}
 	protected void notifyMessageListeners(Packet p) {
+		
 		mListeners.forEach(x -> x.messageReceived(p));
 	}
 	
@@ -138,10 +167,10 @@ public class ClientMsg {
 				if (identifier == 0) {
 					identifier = dis.readInt();
 				}
-				 Scanner sc = new Scanner(System.in);
-		            System.out.print("Entrez votre pseudo : ");
-		            String pseudo = sc.nextLine();
-		            this.username = pseudo;
+//				 Scanner sc = new Scanner(System.in);
+//		            System.out.print("Entrez votre pseudo : ");
+//		            String pseudo = sc.nextLine();
+		            this.username = "test";
 
 		            // Crée la base avec pseudo et ID. 
 		            this.clientDB = new ClientDB(pseudo);
@@ -190,6 +219,12 @@ public class ClientMsg {
 		}
 		
 	}
+	
+	
+	public Integer[] getConnectedUsers() {
+		this.createRequestConnectedUsersData(identifier);
+		return connectedUsers;
+	}
 	public byte[] addUserToGroup(int groupId, int userId) {
 		ByteArrayOutputStream bos = new ByteArrayOutputStream();
 		DataOutputStream dos = new DataOutputStream(bos);
@@ -218,18 +253,23 @@ public class ClientMsg {
 		}
 		return bos.toByteArray();
 	}
-	public byte[] createRequestConnectedUsersData(int resquester) {
+	public void createRequestConnectedUsersData(int resquester) {
 		ByteArrayOutputStream bos = new ByteArrayOutputStream();
 		DataOutputStream dos = new DataOutputStream(bos);
+		System.out.println("ICI ");
 		try {
 			dos.writeByte(20);
-			dos.writeInt(resquester);
+			dos.writeInt(identifier);
 			dos.flush();
-		} catch (IOException e) {
+			 sendPacket(0, bos.toByteArray());
+			for(int i =0; i< bos.toByteArray().length;i++)
+				System.out.println(bos.toByteArray()[i]);
+		} catch (IOException | SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		return bos.toByteArray();
+		
+		
 	}
 	
 	public byte[] listGroupeNonOwner(int resquester) {
@@ -321,6 +361,9 @@ public class ClientMsg {
 			} catch (InputMismatchException | NumberFormatException e) {
 				System.out.println("Mauvais format");
 				
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
 		}
 	}
@@ -340,86 +383,13 @@ public class ClientMsg {
 	    }
 	}
 
-	
+
 	public static void main(String[] args) throws UnknownHostException, IOException, InterruptedException, SQLException {
 		
-		ClientMsg c = new ClientMsg("localhost", 1667);
-
-		// add a dummy listener that print the content of message as a string
-		c.addMessageListener(p -> {
-			byte type = p.data[0];
-			if (type==21 || type==31) {
-				ByteBuffer buf =ByteBuffer.wrap(p.data);
-				buf.get();
-				int taille = buf.getInt();
-				for (int i =0; i<taille; i++) {
-					System.out.print(" -ID: "+ buf.getInt());
-				}
-			} else
-			
-				System.out.println(p.srcId + " says to " + p.destId + ": " + new String(p.data));
-		});
-		
-		// add a connection listener that exit application when connection closed
-		c.addConnectionListener(active ->  {if (!active) System.exit(0);});
-
-		c.startSession();
-		
-		System.out.println("Vous êtes : " + c.getIdentifier());
-
-		// Thread.sleep(5000);
-
-		// l'utilisateur avec id 4 crée un grp avec 1 et 3 dedans (et lui meme)
-		if (c.getIdentifier() == 4) {
-			ByteArrayOutputStream bos = new ByteArrayOutputStream();
-			DataOutputStream dos = new DataOutputStream(bos);
-
-			// byte 1 : create group on server
-			dos.writeByte(1);
-
-			// nb members
-			dos.writeInt(2);
-			// list members
-			dos.writeInt(1);
-			dos.writeInt(3);
-			dos.flush();
-
-			c.sendPacket(0, bos.toByteArray());
-
-		}
-		Scanner scGroupe = new Scanner(System.in);
-		int lg;
-		System.out.println("Quelle est la taille du groupe ? ");
-		lg=Integer.parseInt(scGroupe.nextLine());
-		int[] users = new int[lg];
-		int i = 0;
-		while (i<lg) {
-			try {
-				System.out.println("Qui fait partie du groupe ? ");
-				int user = Integer.parseInt(scGroupe.nextLine());
-				users[i]=user;
-				i++;
-			} catch (InputMismatchException | NumberFormatException e) {
-				System.out.println("Mauvais format");
-			}
-
-		}
-		
-		
-		byte[] data = c.createGroupData(c.getIdentifier(), users);
-		
-		c.sendPacket(0,data);
-		System.out.println("les utilisateurs connectes ");
-		byte[] data2 =  c.createRequestConnectedUsersData(c.getIdentifier());
-		c.sendPacket(0,data2);
-		System.out.println("Quel est l ID du client que vous voulez ajouter a un groupe ");
-		int user = Integer.parseInt(scGroupe.nextLine());
-		System.out.println("Quel est l ID du groupe en question ");
-		int groupe = Integer.parseInt(scGroupe.nextLine());
-		byte[] data3 =  c.addUserToGroup(groupe, user);
-		c.sendPacket(0,data3);
-		byte[] data4 =  c.deleteUserToGroup(groupe, user);
-		c.sendPacket(0,data4);
+		ClientMsg c = new ClientMsg("localhost", 1666);
+		System.out.println("before");
+		 c.createRequestConnectedUsersData(c.getIdentifier());
+		System.out.println("after");
 		Scanner sc = new Scanner(System.in);
 		String lu = null;
 		while (!"\\quit".equals(lu)) {
@@ -434,13 +404,93 @@ public class ClientMsg {
 				System.out.println("Mauvais format");
 				
 			}
-			
-			// TEST affichage de l'historique avec l'utilisateur d'ID 3
-			System.out.println("\n== Affichage de l'historique en tableau ==");
-			c.afficherHistoriqueTableau(3);
+			c.closeSession();
+		
+		 // add a dummy listener that print the content of message as a string
+//		c.addMessageListener(p -> {
+//			byte type = p.data[0];
+//			if (type==21 ) {
+//				ByteBuffer buf =ByteBuffer.wrap(p.data);
+//				buf.get();
+//				int taille = buf.getInt();
+//				for (int i =0; i<taille; i++) {
+//					System.out.print(" -ID: "+ buf.getInt());
+//				}
+//			} else
+//			
+//				System.out.println(p.srcId + " says to " + p.destId + ": " + new String(p.data));
+//		});
+		
+		// add a connection listener that exit application when connection closed
+//		c.addConnectionListener(active ->  {if (!active) System.exit(0);});
+//
+//		c.startSession();
+//		
+//		System.out.println("Vous êtes : " + c.getIdentifier());
 
+		// Thread.sleep(5000);
 
-		}
+		// l'utilisateur avec id 4 crée un grp avec 1 et 3 dedans (et lui meme)
+//		if (c.getIdentifier() == 4) {
+//			ByteArrayOutputStream bos = new ByteArrayOutputStream();
+//			DataOutputStream dos = new DataOutputStream(bos);
+//
+//			// byte 1 : create group on server
+//			dos.writeByte(1);
+//
+//			// nb members
+//			dos.writeInt(2);
+//			// list members
+//			dos.writeInt(1);
+//			dos.writeInt(3);
+//			dos.flush();
+//
+//			c.sendPacket(0, bos.toByteArray());
+//
+//		}
+//		Scanner scGroupe = new Scanner(System.in);
+//		int lg;
+//		System.out.println("Quelle est la taille du groupe ? ");
+//		lg=Integer.parseInt(scGroupe.nextLine());
+//		int[] users = new int[lg];
+//		int i = 0;
+//		while (i<lg) {
+//			try {
+//				System.out.println("Qui fait partie du groupe ? ");
+//				int user = Integer.parseInt(scGroupe.nextLine());
+//				users[i]=user;
+//				i++;
+//			} catch (InputMismatchException | NumberFormatException e) {
+//				System.out.println("Mauvais format");
+//			}
+//
+//		}
+//		
+//	
+//		
+//		byte[] data = c.createGroupData(c.getIdentifier(), users);
+//		
+//		c.sendPacket(0,data);
+//		System.out.println("les utilisateurs connectes ");
+//		byte[] data2 =  c.createRequestConnectedUsersData(c.getIdentifier());
+//
+//		c.sendPacket(0,data2);
+//		System.out.println("Quel est l ID du client que vous voulez ajouter a un groupe ");
+//		int user = Integer.parseInt(scGroupe.nextLine());
+//		System.out.println("Quel est l ID du groupe en question ");
+//		int groupe = Integer.parseInt(scGroupe.nextLine());
+//		byte[] data3 =  c.addUserToGroup(groupe, user);
+//		c.sendPacket(0,data3);
+//		byte[] data4 =  c.deleteUserToGroup(groupe, user);
+//		c.sendPacket(0,data4);
+
+//			
+//			// TEST affichage de l'historique avec l'utilisateur d'ID 3
+//			System.out.println("\n== Affichage de l'historique en tableau ==");
+//			c.afficherHistoriqueTableau(3);  
+//
+//
+//		}
 
 		/*
 		 * int id =1+(c.getIdentifier()-1) % 2; System.out.println("send to "+id);
@@ -450,8 +500,7 @@ public class ClientMsg {
 		 * Thread.sleep(10000);
 		 */
 
-		c.closeSession();
 
 	}
-
+	}
 }

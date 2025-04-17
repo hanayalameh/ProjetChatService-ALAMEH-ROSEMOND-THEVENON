@@ -97,10 +97,10 @@ public class ClientDB {
 	}
 
 	public static void main(String[] args) {
-		Scanner sc = new Scanner(System.in);
-		System.out.println("Entrez votre pseudo : ");
-		String username = sc.nextLine();
-		initialiserClient(username);
+//		Scanner sc = new Scanner(System.in);
+//		System.out.println("Entrez votre pseudo : ");
+//		String username = sc.nextLine();
+//		initialiserClient(username);
 
 	}
 }

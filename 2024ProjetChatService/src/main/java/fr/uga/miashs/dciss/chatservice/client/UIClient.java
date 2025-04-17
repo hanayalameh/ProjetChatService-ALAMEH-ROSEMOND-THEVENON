@@ -26,6 +26,7 @@ import javax.swing.DefaultListModel;
 import java.awt.event.ActionListener;
 import java.io.IOException;
 import java.net.UnknownHostException;
+import java.sql.SQLException;
 import java.util.Timer;
 import java.awt.event.ActionEvent;
 import java.awt.FlowLayout;
@@ -48,12 +49,12 @@ public class UIClient {
 	private JTextArea txtAOutbox;
 	private JTextArea txtAInbox;
 	private JLabel lblInfoMsg;
-	private Integer[] connectedUsers;
 	private int selectedUser;
 	private JLabel lblSelectedUser;
 	private JLabel lblInbox;
 	private JMenu mnNewMenu;
 	private DefaultListModel<Integer> model;
+	private Integer[] connectedUsers;
 	private int[] myGroups;
 	private int[] myGroupsOwn;
 
@@ -86,21 +87,28 @@ public class UIClient {
 	 * @throws UnknownHostException 
 	 */
 	public UIClient() throws UnknownHostException {
-		int port = 1667;
+		int port = 1666;
 		String ipServer = "localhost";
-		this.client = new ClientMsg(ipServer, port);
-		this.client.addMessageListener(p -> System.out.println(p.srcId + " says to " + p.destId + ": " + new String(p.data)));
-		this.client.addConnectionListener(active ->  {if (!active) System.exit(0);});
-		this.client.startSession();
-		//get tab connected users;
-		//--------------------------NEEDCHANGES UPDATE ATTRIBUTES---------------------//
-		this.connectedUsers = new Integer[10];
-		for (int i = 0; i < 5; i+=1) {
-			this.connectedUsers[i] = i + 1;
+		try {
+			this.client = new ClientMsg(ipServer, port);
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
+//		this.client.addMessageListener(p -> System.out.println(p.srcId + " says to " + p.destId + ": " + new String(p.data)));
+//		this.client.addConnectionListener(active ->  {if (!active) System.exit(0);});
+//		try {
+//			this.client.startSession();
+//		} catch (UnknownHostException e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		} catch (SQLException e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		}
 		//Add requete list users
 		System.out.println("Vous êtes : " + this.client.getIdentifier());
-
+		
 		initialize();
 	}
 	
@@ -110,6 +118,7 @@ public class UIClient {
 		//client.getGroupsOwn():
 		System.out.println("entrée refresh");
 		model.clear();
+		connectedUsers = client.getConnectedUsers();
 		for (int i = 0; i < connectedUsers.length ; i += 1) {
 			model.addElement(connectedUsers[i]);
 		}
@@ -276,6 +285,9 @@ public class UIClient {
 		
 	
 	    model = new DefaultListModel<Integer>();
+	    
+	    //-------------REMAKE-----------//
+	    connectedUsers = client.getConnectedUsers();
 	    for (Integer s : connectedUsers) {
 	      model.addElement(s);
 	    }

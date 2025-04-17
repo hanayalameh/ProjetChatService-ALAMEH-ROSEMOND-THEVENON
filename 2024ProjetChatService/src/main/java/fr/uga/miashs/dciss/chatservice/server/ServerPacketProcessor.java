@@ -59,6 +59,7 @@ public class ServerPacketProcessor implements PacketProcessor {
 			break;
 		case 20:
 			int requester = buf.getInt();
+			System.out.println("request" + requester);
 			requestConnectedUsers(requester);
 			break;
 		case 30:
@@ -101,7 +102,9 @@ public class ServerPacketProcessor implements PacketProcessor {
 		
 	}
 	public void requestConnectedUsers(int requestID) {
+		
 		Collection <UserMsg> clients = server.getUsers().values();
+		
 		ByteArrayOutputStream bos = new ByteArrayOutputStream();
 		DataOutputStream dos = new DataOutputStream(bos);
 		System.out.print("ici");
@@ -114,7 +117,10 @@ public class ServerPacketProcessor implements PacketProcessor {
 			}
 			UserMsg requester = server.getUser(requestID);
 			requester.process(new Packet(requestID, requestID, bos.toByteArray()));
-			
+			System.out.println("sortie server");
+			for (int i  = 0; i < bos.toByteArray().length ; i += 1) {
+			System.out.println(bos.toByteArray()[i]);
+			}
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

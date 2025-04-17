@@ -54,6 +54,8 @@ public class ServerMsg {
 	
 	
 	
+
+	
 	public GroupMsg createGroup(int ownerId) {
 		UserMsg owner = users.get(ownerId);
 		if (owner==null) throw new ServerException("User with id="+ownerId+" unknown. Group creation failed.");

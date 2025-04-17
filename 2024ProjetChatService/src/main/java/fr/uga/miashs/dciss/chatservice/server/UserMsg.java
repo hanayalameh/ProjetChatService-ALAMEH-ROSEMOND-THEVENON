@@ -78,6 +78,7 @@ public class UserMsg implements PacketProcessor{
 	}
 	
 	public void close() {
+		
 		active=false;
 		try {
 			if (s!=null) s.close();
@@ -86,7 +87,9 @@ public class UserMsg implements PacketProcessor{
 			e.printStackTrace();
 		}
 		s=null;
+		server.removeUser(userId);
 		LOG.info(userId + " deconnected");
+		
 	}
 	
 	public boolean isConnected() {
