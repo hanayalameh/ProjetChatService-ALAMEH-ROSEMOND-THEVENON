@@ -143,7 +143,6 @@ public class ServerPacketProcessor implements PacketProcessor {
 		
 		ByteArrayOutputStream bos = new ByteArrayOutputStream();
 		DataOutputStream dos = new DataOutputStream(bos);
-		System.out.print("ici");
 		try {
 			dos.writeByte(21);
 			dos.writeInt(clients.size());
@@ -153,7 +152,7 @@ public class ServerPacketProcessor implements PacketProcessor {
 			}
 			UserMsg requester = server.getUser(requestID);
 			requester.process(new Packet(requestID, requestID, bos.toByteArray()));
-			System.out.println("sortie server");
+
 			for (int i  = 0; i < bos.toByteArray().length ; i += 1) {
 			System.out.println(bos.toByteArray()[i]);
 			}

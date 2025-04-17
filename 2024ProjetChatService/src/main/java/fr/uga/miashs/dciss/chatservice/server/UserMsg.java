@@ -152,7 +152,11 @@ public class UserMsg implements PacketProcessor{
 	 */
 	// cette méthode est généralement appelée par ServerMsg
 	public void process(Packet p) {
+		System.out.println("entrée process USER msg");
 		sendQueue.offer(p);
+		System.out.println(sendQueue.size());
+
+
 	}
 	
 }

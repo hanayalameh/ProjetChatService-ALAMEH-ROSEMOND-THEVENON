@@ -17,6 +17,7 @@ import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 
@@ -70,30 +71,33 @@ public class ClientMsg {
 		identifier = id;
 		mListeners = new ArrayList<>();
 		cListeners = new ArrayList<>();
+		this.connectedUsers = new Integer[200]; 
+		addMessageListener(p -> {
+			System.out.println("suivi bug");
+			byte type = p.data[0];
+			if (type==21 || type ==31) {
+				System.out.println("follow2");
+				ByteBuffer buf = ByteBuffer.wrap(p.data);
+				buf.get();
+				int taille = buf.getInt();
+				System.out.println(taille);
+				this.connectedUsers = new Integer[taille]; 
+				System.out.println(this.getClass());
+				for (int i =0; i<taille; i++) {
+					this.connectedUsers[i] = (Integer)buf.getInt();
+					System.out.print(this.connectedUsers[i]);
+				}
+				System.out.println("\n");
+			}
+	
+	});
 		try {
 			startSession();
 		} catch (UnknownHostException | SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-//		addMessageListener(p -> {
-//			System.out.println("suivi bug");
-//			byte type = p.data[0];
-//			if (type==21 || type ==31) {
-//				ByteBuffer buf =ByteBuffer.wrap(p.data);
-//				buf.get();
-//				int taille = buf.getInt();
-//				connectedUsers = new Integer[taille]; 
-//				for (int i =0; i<taille; i++) {
-//					connectedUsers[i] = buf.getInt();
-//					System.out.print(connectedUsers[i]);
-//				}
-//			} else
-//			
-//				System.out.println(p.srcId + " says to " + p.destId + ": " + new String(p.data));
-//		
-//
-//	});
+		
 //		addConnectionListener(active ->  {if (!active) System.exit(0);});
 //
 //		try {
@@ -114,26 +118,34 @@ public class ClientMsg {
 		ListgroupeNonOwner = new Integer[taille];
 	}
 	
+	
+	public Integer[] getConnectedUsers() {
+		Integer[] var = new Integer[this.connectedUsers.length];
+		for (int i = 0; i < this.connectedUsers.length; i += 1) {
+			var[i] = this.connectedUsers[i];
+		}
+		System.out.println("vat length" + var.length);
+		return var;
+	}
 	public void formatagePacket(Packet p) {
 		System.out.println("entrée formatage");
 		String resultat = null;
 		byte type = p.data[0];
+		ByteBuffer buf =ByteBuffer.wrap(p.data);
+		buf.get();
+		int taille = buf.getInt();
 		if (type==21) {
-			ByteBuffer buf =ByteBuffer.wrap(p.data);
-			buf.get();
-			int taille = buf.getInt();
+			
 			setConnectedUsers(taille);
 			resultat = "Vous avez bien recu le nombre d'utilisateurs connectes";
 		}
-		else if (type ==31) {
-			ByteBuffer buf =ByteBuffer.wrap(p.data);
-			buf.get();
-			int taille = buf.getInt();
+		else if (type == 31) {
+			
 			setListgroupeNonOwner(taille);
 			resultat = "Vous avez bien recu les groupe de l utilisateurs";
 		}
 		else if (type ==41) resultat = "groupe cree avec success";
-		else if (type ==42) resultat="probleme lors de la creation du groupe";
+		else if (type ==42) resultat= "probleme lors de la creation du groupe";
 		else if (type == 43) resultat = "Vous n'avez pas l'autorisation d'ajouter un membre dans le groupe";
 		else if (type == 44) resultat = "Membre ajoute dans le groupe avec success";
 		else {
@@ -198,15 +210,14 @@ public class ClientMsg {
 	 */
 	public void startSession() throws UnknownHostException, SQLException {
 		if (s == null || s.isClosed()) {
-			System.out.println(s);
+			//System.out.println(s);
 			try {
 				s = new Socket(serverAddress, serverPort);
-				System.out.println(s);
+				//System.out.println(s);
 				dos = new DataOutputStream(s.getOutputStream());
 				dis = new DataInputStream(s.getInputStream());
 				dos.writeInt(identifier);
-				System.out.println(dis);
-				System.out.println(dos);
+				
 				dos.flush();
 				if (identifier == 0) {
 					identifier = dis.readInt();
@@ -237,13 +248,6 @@ public class ClientMsg {
 		}
 	}
 
-	public String createGroup(int identifier, int[] members) {
-		//Création du paquet
-		//envoie du paquet
-		//réception de la réponse
-		//stockage de la réponse
-		//return réponse.
-	}
 	/**
 	 * Send a packet to the specified destination (etiher a userId or groupId)
 	 * 
@@ -272,10 +276,7 @@ public class ClientMsg {
 	}
 	
 	
-	public Integer[] getConnectedUsers() {
-		this.createRequestConnectedUsersData(identifier);
-		return connectedUsers;
-	}
+
 	public byte[] addUserToGroup(int groupId, int userId) {
 		ByteArrayOutputStream bos = new ByteArrayOutputStream();
 		DataOutputStream dos = new DataOutputStream(bos);
@@ -307,14 +308,13 @@ public class ClientMsg {
 	public void createRequestConnectedUsersData(int resquester) {
 		ByteArrayOutputStream bos = new ByteArrayOutputStream();
 		DataOutputStream dos = new DataOutputStream(bos);
-		System.out.println("ICI ");
 		try {
 			dos.writeByte(20);
 			dos.writeInt(identifier);
 			dos.flush();
 			 sendPacket(0, bos.toByteArray());
-			for(int i =0; i< bos.toByteArray().length;i++)
-				System.out.println(bos.toByteArray()[i]);
+//			for(int i =0; i< bos.toByteArray().length;i++)
+//				System.out.println(bos.toByteArray()[i]);
 		} catch (IOException | SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -424,13 +424,11 @@ public class ClientMsg {
 	    try {
 	        // Appel de la méthode pour récupérer le tableau de messages entre l'utilisateur courant et autreId
 	        String[] historique = clientDB.getMessagesArrayBetween(this.identifier, autreId);
-	        System.out.println("Historique des messages avec l'utilisateur " + autreId + " :");
-	        for (String msg : historique) {
-	            System.out.println(msg);
-	        }
+	        //System.out.println("Historique des messages avec l'utilisateur " + autreId + " :");
+
 	        return historique;
 	    } catch (SQLException e) {
-	        System.out.println("Erreur lors de la récupération de l'historique : ");
+	        //System.out.println("Erreur lors de la récupération de l'historique : ");
 	        e.printStackTrace();
 	        String[] pouet = {"1","2"};
 	        return pouet;
@@ -441,9 +439,23 @@ public class ClientMsg {
 	public static void main(String[] args) throws UnknownHostException, IOException, InterruptedException, SQLException {
 		
 		ClientMsg c = new ClientMsg("localhost", 1666);
-		System.out.println("before");
-		 c.createRequestConnectedUsersData(c.getIdentifier());
-		System.out.println("after");
+		System.out.println("Vous êtes" + c.getIdentifier());
+		c.addMessageListener(p -> System.out.println(p.srcId + " says to " + p.destId + ": " + new String(p.data)));
+		
+		c.createRequestConnectedUsersData(c.getIdentifier());
+		
+		c.getConnectedUsers();
+		c.sendPacket(20000, "paquet de test".getBytes());
+c.createRequestConnectedUsersData(c.getIdentifier());
+		
+		c.getConnectedUsers();
+		
+		for (int i = 0; i < 2; i += 1) {
+			System.out.println(c.getConnectedUsers()[i]);
+		}
+
+		
+		
 		Scanner sc = new Scanner(System.in);
 		String lu = null;
 		while (!"\\quit".equals(lu)) {
@@ -458,6 +470,14 @@ public class ClientMsg {
 				System.out.println("Mauvais format");
 				
 			}
+			
+			c.createRequestConnectedUsersData(c.getIdentifier());
+
+			c.getConnectedUsers();
+			for (int i = 0; i < 2; i += 1) {
+				System.out.println(c.getConnectedUsers()[i]);
+			}
+		
 			c.closeSession();
 		
 		 // add a dummy listener that print the content of message as a string

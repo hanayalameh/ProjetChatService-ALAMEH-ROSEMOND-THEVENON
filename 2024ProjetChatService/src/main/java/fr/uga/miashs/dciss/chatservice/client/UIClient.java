@@ -113,21 +113,22 @@ public class UIClient {
 		
 		initialize();
 		Integer[] var = client.getConnectedUsers();
-		System.out.println(var);
+		//System.out.println(var);
 	}
 	
 	public void refresh() {
 		//client.getConnectedUsers();
 		//client.getGroups();
 		//client.getGroupsOwn():
-		System.out.println("entrée refresh");
 		model.clear();
-		Integer[] pouet = {1,2,3};
+		Integer[] pouet = {1,2,3,4,5,6,7,8};
 		connectedUsers = pouet;
 		//connectedUsers = client.getConnectedUsers();
-		for (int i = 0; i < connectedUsers.length ; i += 1) {
-			model.addElement(connectedUsers[i]);
-		}
+	    for (Integer s : connectedUsers) {
+	    	if (s != (Integer)client.getIdentifier()) {
+	    		model.addElement(s);
+	    	}
+	    }
 //		for(int i = 0 ; i< myGroups.length ; i += 1) {
 //			model.addElement(myGroups[i]);
 //		}
@@ -145,7 +146,7 @@ public class UIClient {
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frame.getContentPane().setLayout(new BorderLayout(0, 0));
 		
-		JLabel lbltitle = new JLabel("Bienvenue sur le chat !");
+		JLabel lbltitle = new JLabel("Bienvenue sur le chat " +client.getIdentifier() +" !");
 		lbltitle.setHorizontalAlignment(SwingConstants.CENTER);
 		frame.getContentPane().add(lbltitle, BorderLayout.NORTH);
 		
@@ -201,13 +202,14 @@ public class UIClient {
                 }
                 
                 
-                System.out.println(nbMembers);
+                //System.out.println(nbMembers);
                 if (nbMembers < 1) {
                 	lblInfoMsg.setForeground(Color.RED);
                 	lblInfoMsg.setText("Vous ne pouvez pas être seul.e dans un groupe");
                 } else {
                 	
-                String reponse = client.createGroupData(client.getIdentifier(), membersTab);
+//                String reponse = client.createGroupData(client.getIdentifier(), membersTab);
+                	String reponse = "Groupe créé !";	
                 	lblInfoMsg.setText(reponse);
                 	lblInfoMsg.setForeground(Color.BLUE);
 
@@ -235,19 +237,19 @@ public class UIClient {
 				int[] groupAndMember = new int[2];
 				int j = 0;
 				String tmpStr = "";
-				System.out.println(addGroup);
+				//System.out.println(addGroup);
 				for(int i = 0; i < addGroup.length() && j < 2; i += 1 ) {
 					char currChar = addGroup.charAt(i);
-					System.out.println(addGroup.charAt(i));
+					//System.out.println(addGroup.charAt(i));
 					if (currChar >= '0' && currChar <= '9') {
 						tmpStr = tmpStr + addGroup.charAt(i);
 
 					} else if (currChar == '-' && tmpStr.length() == 0 && j ==0) {
 						tmpStr = tmpStr + addGroup.charAt(i);
 					} else {
-						System.out.println("Suivi bug");
 
-						System.out.println(tmpStr);
+
+						//System.out.println(tmpStr);
 						groupAndMember[j] = Integer.parseInt(tmpStr);
 						tmpStr = "";
 						j += 1;
@@ -255,7 +257,7 @@ public class UIClient {
 				}
 				client.addUserToGroup(groupAndMember[0], groupAndMember[1]);
 				
-				System.out.println(addGroup);
+				//System.out.println(addGroup);
 				//client.leaveGroup(int);
             	lblInfoMsg.setText(groupAndMember[1] + " a bien été ajouté.e au groupe" + groupAndMember[0]);
             	lblInfoMsg.setForeground(Color.BLUE);
@@ -293,18 +295,20 @@ public class UIClient {
 	    model = new DefaultListModel<Integer>();
 	    
 	    //-------------REMAKE-----------//
-	    Integer[] pouet = {1,2,3};
+	    Integer[] pouet = {1,2,3,4,5,6,7,8,9};
 	    connectedUsers = pouet;
-	    System.out.println(connectedUsers);
+	    //System.out.println(connectedUsers);
 	    for (Integer s : connectedUsers) {
-	      model.addElement(s);
+	    	if (s != (Integer)client.getIdentifier()) {
+	    		model.addElement(s);
+	    	}
 	    }
 		JList<Integer> list = new JList<>(model);
 		list.addMouseListener(new MouseAdapter() {
 			@Override
 			public void mouseClicked(MouseEvent e) {
 				selectedUser = list.getSelectedValue();
-				System.out.println(selectedUser);
+				//System.out.println(selectedUser);
 				lblSelectedUser.setText("Vous écrivez à "+selectedUser);
 				lblInbox.setText("Conversation avec " + selectedUser);
 				
@@ -338,8 +342,8 @@ public class UIClient {
 				String leaveGroup = JOptionPane.showInputDialog(frame,
                         "Vous appartenez aux groupes : " + myGroupsStr + ". Quel groupe voulez-vous quitter ?", null);
 				int groupToLeave = Integer.parseInt(leaveGroup);
-				System.out.println(leaveGroup);
-				//client.leaveGroup(int);
+				//System.out.println(leaveGroup);
+				//client.leaveGroup(grouptToLeave);
             	lblInfoMsg.setText("Vous avez bien quitté le groupe" + leaveGroup);
             	lblInfoMsg.setForeground(Color.BLUE);
 				refresh();
@@ -362,7 +366,7 @@ public class UIClient {
 				
 				String deleteGroup = JOptionPane.showInputDialog(frame,
                         "Vous administrez les groupes : " + myGroupsOwnStr + ". Quel groupe voulez-vous supprimer ?", null);
-				System.out.println(deleteGroup);
+				//System.out.println(deleteGroup);
 				int groupToDelete = Integer.parseInt(deleteGroup);
 				
             	lblInfoMsg.setText("Le groupe " + deleteGroup + " a bien été supprimé");
@@ -421,12 +425,12 @@ public class UIClient {
 					public void actionPerformed(ActionEvent e) {
 						
 						int dest = selectedUser;
-						System.out.println("user : " +selectedUser);
+						//System.out.println("user : " +selectedUser);
 						String message = txtAOutbox.getText();
-						System.out.println("Dest : " + dest + ", Msg : " + message);
+						//System.out.println("Dest : " + dest + ", Msg : " + message);
 						
 						client.sendMessage(dest, message);
-						System.out.println(txtAInbox.getText().length());
+						//System.out.println(txtAInbox.getText().length());
 						if (txtAInbox.getText().length() == 0) {
 							txtAInbox.setText("Début de la conversation avec "+dest);
 						}
