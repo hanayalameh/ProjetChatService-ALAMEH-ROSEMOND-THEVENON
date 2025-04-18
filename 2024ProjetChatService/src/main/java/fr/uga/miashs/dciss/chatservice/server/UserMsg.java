@@ -96,18 +96,21 @@ public class UserMsg implements PacketProcessor{
 		return s!=null;
 	}
 	
-	// boucle d'envoie
+	// boucle de reception
 	public void receiveLoop() {
 		try {
 			DataInputStream dis = new DataInputStream(s.getInputStream());
 			// tant que la connexion n'est pas terminée
 			while (active && ! s.isInputShutdown()) {
+				System.out.println("entrée usermsg receive loop");
 				// on lit les paquets envoyé par le client
 				int destId = dis.readInt();
 				int length = dis.readInt();
 				byte[] content = new byte[length];
 				dis.readFully(content);
 				// on envoie le paquet à ServerMsg pour qu'il le gère
+				System.out.println("svr msg receiveloop" + userId + destId);
+
 				server.processPacket(new Packet(userId,destId,content));
 			}
 			
@@ -120,31 +123,84 @@ public class UserMsg implements PacketProcessor{
 	
 	// boucle d'envoi
 	public void sendLoop() {
+		 
+
 		Packet p = null;
+		System.out.println("entrée sendloop");
+
 		try {
+ 
+
 			DataOutputStream dos = new DataOutputStream(s.getOutputStream());
+ 
+
 			// tant que la connexion n'est pas terminée
+ 
+
 			while (active && s.isConnected()) {
+ 
+				System.out.println("boucle seend active");
 				// on récupère un message à envoyer dans la file
+ 
+
 				// sinon on attend, car la méthode take est "bloquante" tant que la file est vide
+ 
+
 				p = sendQueue.take();
+				System.out.println("packet  seend active");
+
+
 				// on envoie le paquet au client
+ 
+
 				dos.writeInt(p.srcId);
+ 
+
 				dos.writeInt(p.destId);
+ 
+				//dos.write(51);
 				dos.writeInt(p.data.length);
+ 
+
 				dos.write(p.data);
+ 
+
 				dos.flush();
+ 
+
 				
+ 
+
 			}
+ 
+
 		} catch (IOException e) {
+ 
+
 			// remet le paquet dans la file si pb de transmission (connexion terminée)
+ 
+
 			if (p!=null) sendQueue.offer(p);
+ 
+
 			LOG.warning("Connection with client "+userId+" is broken...close it.");
+ 
+
 			//e.printStackTrace();
+ 
+
 		} catch (InterruptedException e) {
+ 
+
 			throw new ServerException("Sending loop thread of "+userId+" has been interrupted.",e);
+ 
+
 		}
+ 
+
 		close();
+ 
+
 	}
 	
 	/**
@@ -152,7 +208,11 @@ public class UserMsg implements PacketProcessor{
 	 */
 	// cette méthode est généralement appelée par ServerMsg
 	public void process(Packet p) {
+		System.out.println("entrée process usermsg");
+		System.out.println("sendque" + sendQueue.size());
 		sendQueue.offer(p);
+		System.out.println("sendque après" + sendQueue.size());
+
 	}
 	
 }

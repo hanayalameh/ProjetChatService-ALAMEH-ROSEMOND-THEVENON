@@ -106,7 +106,7 @@ public class ServerMsg {
 	// Methode utilisée pour savoir quoi faire d'un paquet
 	// reçu par le serveur
 	public void processPacket(Packet p) {
-		PacketProcessor pp = null;
+		PacketProcessor pp =null;
 		if (p.destId < 0) { //message de groupe
 			// can be send only if sender is member
 			UserMsg sender = users.get(p.srcId);

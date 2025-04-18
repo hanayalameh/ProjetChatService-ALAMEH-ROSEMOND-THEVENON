@@ -33,8 +33,10 @@ public class ServerPacketProcessor implements PacketProcessor {
 
 	@Override
 	public void process(Packet p) {
+		System.out.println("entrée SPP");
 		// ByteBufferVersion. On aurait pu utiliser un ByteArrayInputStream + DataInputStream à la place
 		ByteBuffer buf = ByteBuffer.wrap(p.data);
+		System.out.println(buf.toString());
 		byte type = buf.get();
 		
 //		if (type == 1) { // cas creation de groupe

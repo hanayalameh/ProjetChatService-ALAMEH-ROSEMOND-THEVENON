@@ -296,6 +296,7 @@ public class ClientMsg {
 	 */
 	public void sendPacket(int destId, byte[] data) throws SQLException {
 		try {
+			System.out.println("sendpack client msg " + destId);
 			synchronized (dos) {
 				dos.writeInt(destId);
 				dos.writeInt(data.length);
@@ -313,7 +314,21 @@ public class ClientMsg {
 		}
 		
 	}
-	
+	public void createRequestConnectedUsersData(int resquester) {
+		ByteArrayOutputStream bos = new ByteArrayOutputStream();
+		DataOutputStream dos = new DataOutputStream(bos);
+		try {
+			dos.writeByte(20);
+			dos.writeInt(identifier);
+			dos.flush();
+			 sendPacket(0, bos.toByteArray());
+			for(int i =0; i< bos.toByteArray().length;i++)
+				System.out.println(bos.toByteArray()[i]);
+		} catch (IOException | SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}	
+	}
 	
 	public Integer[] getConnectedUsers() {
 		createRequestConnectedUsersData(identifier);
@@ -321,6 +336,7 @@ public class ClientMsg {
 	}
 	
 	public Integer[] getCachedConnectedUsers() {
+		System.out.println("clientmsg CU" + this.connectedUsers.length);
 	    return connectedUsers;
 	}
 
@@ -401,23 +417,9 @@ public class ClientMsg {
 		byte[] payload = deleteUserToGroup(groupId, userId);
 	    sendPacket(0, payload);
 	}
-	public void createRequestConnectedUsersData(int resquester) {
-		ByteArrayOutputStream bos = new ByteArrayOutputStream();
-		DataOutputStream dos = new DataOutputStream(bos);
-		try {
-			dos.writeByte(20);
-			dos.writeInt(identifier);
-			dos.flush();
-			 sendPacket(0, bos.toByteArray());
-			for(int i =0; i< bos.toByteArray().length;i++)
-				System.out.println(bos.toByteArray()[i]);
-		} catch (IOException | SQLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
-		
-	}
+
+	
+	
 	public void requestGroupsOwned() throws SQLException {
 	    ByteArrayOutputStream bos = new ByteArrayOutputStream();
 	    try {
@@ -539,13 +541,10 @@ public class ClientMsg {
 	}
 	
 	protected void sendMessage(int destination, String message) {
-		String lu = null;
-		if (!"\\quit".equals(lu)) {
+		if (!"\\quit".equals(message)) {
 			try {
 				int dest = destination;
-
-				lu = message;
-				this.sendPacket(dest, lu.getBytes());
+				this.sendPacket(dest, message.getBytes());
 			} catch (InputMismatchException | NumberFormatException e) {
 				System.out.println("Mauvais format");
 				

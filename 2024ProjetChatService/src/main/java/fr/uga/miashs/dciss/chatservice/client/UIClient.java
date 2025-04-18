@@ -102,11 +102,14 @@ public class UIClient {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		this.myGroups = new Integer[0];
+		this.myGroupsOwn = new Integer[0];
+
 		client.addConnectedUsersListener(users -> {
             SwingUtilities.invokeLater(() -> {
                 
                 this.connectedUsers = users;
-                
+                System.out.println("CU init " + connectedUsers);
                 model.clear();
                 for (Integer u : users) {
                     model.addElement(u);
@@ -116,10 +119,24 @@ public class UIClient {
 
 
 		client.addMessageListener(p -> {
+			if(client.getIdentifier() != 0 && p.srcId!=client.getIdentifier()) {
+				SwingUtilities.invokeLater(() ->
+	        	{
+	        		if (p.srcId == selectedUser) {
+	        		txtAInbox.setText("Debut de la conversation avec " + selectedUser+ "\n");
+	        		//String[] conversation = client.getConversation(int);
+					String[] conversation = client.afficherHistoriqueTableau(selectedUser);
+					for(int i = 0; i < conversation.length; i += 1) {
+						txtAInbox.setText(txtAInbox.getText() + conversation[i] + "\n");
+					}
+				}
+	        	}
+				);
+			} else {
 		    byte type = p.data[0];
 		    ByteBuffer buf = ByteBuffer.wrap(p.data);
 		    buf.get();  // skip the type byte
-
+		    
 		    switch (type) {
 		        case 21: {  
 		        	client.handleConnectedUsersPacket(ByteBuffer.wrap(p.data).position(1));
@@ -227,8 +244,8 @@ public class UIClient {
 		            );
 		            break;
 		        }
-		    }
-		});
+
+		    }}});
 
 
 		client.addConnectionListener(active ->  {if (!active) System.exit(0);});
@@ -251,25 +268,26 @@ public class UIClient {
 	
 	public void refresh() {
 
-		connectedUsers = client.getCachedConnectedUsers();
-		myGroups = client.getListGroupeNonOwner();
-		myGroupsOwn = client.getLastOwnedGroups();
-		
-		for (Integer s : connectedUsers) {
-	    	if (s != (Integer)client.getIdentifier()) {
-	    		model.addElement(s);
-	    	}
-		}
-		for (Integer s : myGroups) {
-	    	if (s != (Integer)client.getIdentifier()) {
-	    		model.addElement(s);
-	    	}
-		}
-		for (Integer s : myGroupsOwn) {
-	    	if (s != (Integer)client.getIdentifier()) {
-	    		model.addElement(s);
-	    	}
-		}
+//		client.refreshConnectedUsers();
+//		System.out.println("CU refresh" + client.getCachedConnectedUsers());
+//		myGroups = client.getListGroupeNonOwner();
+//		myGroupsOwn = client.getLastOwnedGroups();
+//		model.clear();
+//		for (Integer s : connectedUsers) {
+//	    		model.addElement(s);
+//	    	
+//		}
+//		if (myGroups != null ) {
+//			for (Integer s : myGroups) {
+//		    		model.addElement(s);
+//			}
+//		}
+//		
+//		if (myGroupsOwn.length > 0) {
+//			for (Integer s : myGroupsOwn) {
+//		    		model.addElement(s);
+//			}
+//		}
 	}
 
 	/**
@@ -483,17 +501,15 @@ public class UIClient {
 	    model = new DefaultListModel<Integer>();
 	    
 	    //-------------REMAKE-----------//
-	    Integer[] pouet = {1,2,3};
-	    connectedUsers = pouet;
+
 	    System.out.println(connectedUsers);
-	    for (Integer s : connectedUsers) {
-	      model.addElement(s);
-	    }
+
+	    refresh();
 		JList<Integer> list = new JList<>(model);
 		list.addMouseListener(new MouseAdapter() {
 			@Override
 			public void mouseClicked(MouseEvent e) {
-				refresh();
+				
 				selectedUser = list.getSelectedValue();
 				System.out.println(selectedUser);
 				lblSelectedUser.setText("Vous écrivez à "+selectedUser);
