@@ -62,8 +62,8 @@ public class UIClient {
 	private JMenu mnNewMenu;
 	private DefaultListModel<Integer> model;
 	private Integer[] connectedUsers;
-	private int[] myGroups;
-	private int[] myGroupsOwn;
+	private Integer[] myGroups;
+	private Integer[] myGroupsOwn;
 
 	/**
 	 * Launch the application.
@@ -250,23 +250,26 @@ public class UIClient {
 	}
 	
 	public void refresh() {
-		//client.getConnectedUsers();
-		//client.getGroups();
-		//client.getGroupsOwn():
-		System.out.println("entrée refresh");
-		model.clear();
-		Integer[] pouet = {1,2,3};
-		connectedUsers = pouet;
-		//connectedUsers = client.getConnectedUsers();
-//		for (int i = 0; i < connectedUsers.length ; i += 1) {
-//			model.addElement(connectedUsers[i]);
-//		}
-//		for(int i = 0 ; i< myGroups.length ; i += 1) {
-//			model.addElement(myGroups[i]);
-//		}
-//		for(int i = 0 ; i< myGroupsOwn.length ; i += 1) {
-//			model.addElement(myGroupsOwn[i]);
-//		}
+
+		connectedUsers = client.getCachedConnectedUsers();
+		myGroups = client.getListGroupeNonOwner();
+		myGroupsOwn = client.getLastOwnedGroups();
+		
+		for (Integer s : connectedUsers) {
+	    	if (s != (Integer)client.getIdentifier()) {
+	    		model.addElement(s);
+	    	}
+		}
+		for (Integer s : myGroups) {
+	    	if (s != (Integer)client.getIdentifier()) {
+	    		model.addElement(s);
+	    	}
+		}
+		for (Integer s : myGroupsOwn) {
+	    	if (s != (Integer)client.getIdentifier()) {
+	    		model.addElement(s);
+	    	}
+		}
 	}
 
 	/**
@@ -311,15 +314,11 @@ public class UIClient {
 		btnCreateGroup.addActionListener(new java.awt.event.ActionListener() {
             @Override
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-            	Integer[] connected = client.getConnectedUsers();
-                if (connected == null || connected.length == 0) {
-                    lblInfoMsg.setForeground(Color.RED);
-                    lblInfoMsg.setText("Aucun utilisateur connecté");
-                    return;
-                }
+            	refresh();
+                
                 
                 StringBuilder sbUsers = new StringBuilder();
-                for (Integer u : connected) {
+                for (Integer u : connectedUsers) {
                     sbUsers.append(u).append(", ");
                 }
                 if (sbUsers.length() > 2) {
@@ -494,6 +493,7 @@ public class UIClient {
 		list.addMouseListener(new MouseAdapter() {
 			@Override
 			public void mouseClicked(MouseEvent e) {
+				refresh();
 				selectedUser = list.getSelectedValue();
 				System.out.println(selectedUser);
 				lblSelectedUser.setText("Vous écrivez à "+selectedUser);
@@ -563,10 +563,10 @@ public class UIClient {
 		JButton btnDeleteGroup = new JButton("Supprimer un groupe");
 		btnDeleteGroup.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
+				refresh();
 				String myGroupsOwnStr = "";
-				int[] myGroups2 = {1,2,3,4,5};
-				for (int i = 0; i < myGroups2.length ; i += 1) {
-					myGroupsOwnStr += myGroups2[i] + ", ";
+				for (int i = 0; i < myGroupsOwn.length ; i += 1) {
+					myGroupsOwnStr += myGroupsOwn[i] + ", ";
 				}
 				
 				String deleteGroup = JOptionPane.showInputDialog(frame,
