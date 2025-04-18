@@ -18,7 +18,7 @@ import java.nio.ByteBuffer;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
-
+import java.util.function.Consumer;
 
 import fr.uga.miashs.dciss.chatservice.common.Packet;
 import fr.uga.miashs.dciss.chatservice.server.GroupMsg;
@@ -37,6 +37,7 @@ public class ClientMsg {
 	private String serverAddress;
 	private int serverPort;
 	private Integer[] connectedUsers;
+	private final List<Consumer<Integer[]>> connectedUsersListeners = new ArrayList<>();
 	private Integer[] ListgroupeNonOwner;
 	private Socket s;
 	private DataOutputStream dos;
@@ -123,13 +124,15 @@ public class ClientMsg {
 		System.out.println("entrée formatage");
 		String resultat = null;
 		byte type = p.data[0];
-		if (type==21) {
-			ByteBuffer buf =ByteBuffer.wrap(p.data);
-			buf.get();
-			int taille = buf.getInt();
-			setConnectedUsers(taille);
-			resultat = "Vous avez bien recu le nombre d'utilisateurs connectes";
-		}
+		if (type == 21) {
+	        ByteBuffer buf = ByteBuffer.wrap(p.data);
+	        buf.get();                           
+	        int count = buf.getInt();
+	        setConnectedUsers(count);            
+	        for (int i = 0; i < count; i++)
+	            connectedUsers[i] = buf.getInt();
+	        return;
+	    }
 		else if (type ==31) {
 			ByteBuffer buf =ByteBuffer.wrap(p.data);
 			buf.get();
@@ -209,7 +212,27 @@ public class ClientMsg {
 	protected void notifyConnectionListeners(boolean active) {
 		cListeners.forEach(x -> x.connectionEvent(active));
 	}
+	public void addConnectedUsersListener(Consumer<Integer[]> l) {
+        if (l != null) connectedUsersListeners.add(l);
+    }
 
+	private void notifyConnectedUsersListeners() {
+        for (Consumer<Integer[]> l : connectedUsersListeners) {
+            l.accept(connectedUsers);
+        }
+    }
+	
+	 public void handleConnectedUsersPacket(ByteBuffer buf) {
+	        int count = buf.getInt();
+	        connectedUsers = new Integer[count];
+	        for (int i = 0; i < count; i++) {
+	            connectedUsers[i] = buf.getInt();
+	        }
+	        notifyConnectedUsersListeners();
+	    }
+
+	  
+	
 
 	public int getIdentifier() {
 		return identifier;
@@ -293,8 +316,16 @@ public class ClientMsg {
 	
 	
 	public Integer[] getConnectedUsers() {
-		this.createRequestConnectedUsersData(identifier);
+		createRequestConnectedUsersData(identifier);
 		return connectedUsers;
+	}
+	
+	public Integer[] getCachedConnectedUsers() {
+	    return connectedUsers;
+	}
+
+	public void refreshConnectedUsers() {
+	    createRequestConnectedUsersData(identifier);
 	}
 	public Integer[] getLastOwnedGroups() { return lastOwnedGroups; }
 	public void setLastOwnedGroups(int groupeId) {
@@ -373,7 +404,6 @@ public class ClientMsg {
 	public void createRequestConnectedUsersData(int resquester) {
 		ByteArrayOutputStream bos = new ByteArrayOutputStream();
 		DataOutputStream dos = new DataOutputStream(bos);
-		System.out.println("ICI ");
 		try {
 			dos.writeByte(20);
 			dos.writeInt(identifier);

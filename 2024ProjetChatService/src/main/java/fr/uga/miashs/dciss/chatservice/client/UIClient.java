@@ -102,6 +102,18 @@ public class UIClient {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		client.addConnectedUsersListener(users -> {
+            SwingUtilities.invokeLater(() -> {
+                
+                this.connectedUsers = users;
+                
+                model.clear();
+                for (Integer u : users) {
+                    model.addElement(u);
+                }
+            });
+        });
+
 
 		client.addMessageListener(p -> {
 		    byte type = p.data[0];
@@ -110,19 +122,14 @@ public class UIClient {
 
 		    switch (type) {
 		        case 21: {  
-		            int count = buf.getInt();
-		            Integer[] users = new Integer[count];
-		            for (int i = 0; i < count; i++) {
-		                users[i] = buf.getInt();
-		            }
+		        	client.handleConnectedUsersPacket(ByteBuffer.wrap(p.data).position(1));
 		            SwingUtilities.invokeLater(() -> {
 		                model.clear();
-		                for (Integer u : users) {
+		                for (Integer u : client.getCachedConnectedUsers()) {
 		                    model.addElement(u);
 		                }
 		            });
-		            break;
-		        }
+		         }
 
 		        case 34: {  
 		            int n = buf.getInt();
@@ -236,10 +243,10 @@ public class UIClient {
 
 		//Add requete list users
 		System.out.println("Vous êtes : " + this.client.getIdentifier());
-		
+		client.refreshConnectedUsers();
 		initialize();
-		Integer[] var = client.getConnectedUsers();
-		System.out.println(var);
+		//Integer[] var = client.getConnectedUsers();
+		//System.out.println(var);
 	}
 	
 	public void refresh() {
@@ -251,9 +258,9 @@ public class UIClient {
 		Integer[] pouet = {1,2,3};
 		connectedUsers = pouet;
 		//connectedUsers = client.getConnectedUsers();
-		for (int i = 0; i < connectedUsers.length ; i += 1) {
-			model.addElement(connectedUsers[i]);
-		}
+//		for (int i = 0; i < connectedUsers.length ; i += 1) {
+//			model.addElement(connectedUsers[i]);
+//		}
 //		for(int i = 0 ; i< myGroups.length ; i += 1) {
 //			model.addElement(myGroups[i]);
 //		}
@@ -304,8 +311,29 @@ public class UIClient {
 		btnCreateGroup.addActionListener(new java.awt.event.ActionListener() {
             @Override
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                String members = JOptionPane.showInputDialog(frame,
-                        "Entrez les ID des membres séparées par des virgules ", null);
+            	Integer[] connected = client.getConnectedUsers();
+                if (connected == null || connected.length == 0) {
+                    lblInfoMsg.setForeground(Color.RED);
+                    lblInfoMsg.setText("Aucun utilisateur connecté");
+                    return;
+                }
+                
+                StringBuilder sbUsers = new StringBuilder();
+                for (Integer u : connected) {
+                    sbUsers.append(u).append(", ");
+                }
+                if (sbUsers.length() > 2) {
+                    sbUsers.setLength(sbUsers.length() - 2);
+                }
+                String members = JOptionPane.showInputDialog(
+                        frame,
+                        "Utilisateurs connectés : " + sbUsers +
+                        " Entrez les ID des membres séparés par des virgules",
+                        null
+                    );
+                    if (members == null) {
+                        return; 
+                    }
                 int[] membersTab = new int[50];
                 String member = "";
                 int nbMembers = 0;
